@@ -82,7 +82,7 @@ void* listener_func(int *sock){
 }
 
 
-void* listener_loop(int* sock){
+void* listener_loop(int *sock){
     while(1){
 	char buf[80];
 	int n = read(sock, buf, 6);//TODO read HEADER_SIZE
