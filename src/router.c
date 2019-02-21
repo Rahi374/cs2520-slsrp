@@ -10,7 +10,8 @@
 #include <netdb.h>
 #include <errno.h>
 
-#define LISTEN_PORT 50500
+#include "router.h"
+
 
 void* listener_func();
 void* listener_loop();
@@ -118,9 +119,8 @@ void* writer_func(){
     while(1){
 	char *bufout = "Hello";
 	int n = write(sock, bufout, strlen(bufout)+1);
-	printf("writer 1 wrote\n");
 	if(n < 0){
-	    perror("error in write\n");
+	    perror("error in write 1\n");
 	}
 	usleep(2000000);
     }
@@ -147,9 +147,8 @@ void* writer_func2(){
     while(1){
 	char *bufout = "Mello";
 	int n = write(sock, bufout, strlen(bufout)+1);
-	printf("writer 2 wrote\n");
 	if(n < 0){
-	    perror("error in write\n");
+	    perror("error in write 2\n");
 	}
 	usleep(4000000);
     }
