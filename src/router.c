@@ -32,9 +32,8 @@ int main(int argc, char *argv[])
     struct sockaddr_in sag;
     memset(&sag, 0, sizeof(sag));
     sag.sin_port = htons(LISTEN_PORT);
-    //sag.sin_addr.s_addr = htonl(INADDR_ANY);
-    //sag.sin_addr.s_addr = htonl(inet_addr("127.0.1.1"));
-    sag.sin_addr.s_addr = inet_addr("127.0.1.1");
+    sag.sin_addr.s_addr = htonl(INADDR_ANY);
+    //sag.sin_addr.s_addr = inet_addr("127.0.1.1");
     sag.sin_family = AF_INET;
     bind(listen_sock, (struct sockaddr *)&sag,sizeof(sag));
 
@@ -42,8 +41,7 @@ int main(int argc, char *argv[])
     pthread_t listener_thread;
     pthread_create(&listener_thread, NULL, listener_func, &listen_sock); 
 
-    usleep(3000000);
-
+    usleep(2000000);
     
     printf("creating writer 1\n");
     pthread_t writer_thread;
@@ -60,8 +58,10 @@ int main(int argc, char *argv[])
 }
 
 
-//the listener thread
-void* listener_func(int *listen_sock){
+//this function loops on the socket accepting connections
+//spawns thread to deal with connections
+void* listener_func(int *listen_sock)
+{
     int listen_ret = listen(*listen_sock, 100);
     if(listen_ret < 0){
 	perror("Error in listener listen call");
@@ -72,7 +72,7 @@ void* listener_func(int *listen_sock){
 	struct sockaddr_in sa2;
 	socklen_t sa2_size = sizeof(sa2);
 	int accept_sock = accept(*listen_sock, (struct sockaddr *)&sa2, &sa2_size);
-	int *socket_fd = (int*)malloc(sizeof(int));
+	int *socket_fd = (int*)malloc(sizeof(int));//TODO add to hm for freeing purposes
 	*socket_fd = accept_sock;
 	if(accept_sock < 0){
 	    perror("Error in accept in listener");
@@ -86,7 +86,8 @@ void* listener_func(int *listen_sock){
 }
 
 
-void* listener_loop(int *sock){
+void* listener_loop(int *sock)
+{
     while(1){
 	char buf[80];
 	int n = read(*sock, buf, 6);//TODO read HEADER_SIZE
@@ -129,7 +130,8 @@ void* writer_func(){
     }
 }
 
-void* writer_func2(){
+void* writer_func2()
+{
     int sock = socket(AF_INET,SOCK_STREAM,0);
     if(sock < 0){
 	perror("Error making socket in writer 2\n");
