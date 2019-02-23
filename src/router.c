@@ -89,17 +89,21 @@ void* listener_loop(int *sock)
 {
     while(1){
 	char buf[80];
-	int n = read(*sock, buf, 6);//TODO read HEADER_SIZE
-	if(n < 0){
-	    printf("error in read\n");
+	// TODO read HEADER_SIZE
+	int n = read(*sock, buf, 6);
+	if (n == 0) {
+		printf("disconnected\n");
+		pthread_exit(0);
+	} else if (n < 0) {
+		printf("error in read\n");
+		pthread_exit(-1);
 	}
-	printf("Received: %s\n", buf);
+
+	printf("%d Received: %s\n", *sock, buf);
 	fflush(stdout);
 	//usleep(1000000);
     }
 }
-
-
 
 void* writer_func(){
     int sock = socket(AF_INET,SOCK_STREAM,0);
