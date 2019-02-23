@@ -32,8 +32,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in sag;
     memset(&sag, 0, sizeof(sag));
     sag.sin_port = htons(LISTEN_PORT);
-    sag.sin_addr.s_addr = htonl(INADDR_ANY);
-    //sag.sin_addr.s_addr = inet_addr("127.0.1.1");
+    sag.sin_addr.s_addr = inet_addr("0.0.0.0");
     sag.sin_family = AF_INET;
     bind(listen_sock, (struct sockaddr *)&sag,sizeof(sag));
 
