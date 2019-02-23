@@ -1,7 +1,7 @@
 * milestone 1
 
-- hashmap implementation
+- DONE hashmap implementation
 - ui - basic control and debug
 - router - neighbour aquisition
-- linked list - from kernel
-- docker - scriptize
+- DONE linked list - from kernel
+- DONE docker - scriptize
