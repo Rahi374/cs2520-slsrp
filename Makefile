@@ -1,4 +1,4 @@
-docker: Dockerfile src/*
+docker: Dockerfile src/router.*
 	docker build --tag=router .
 
 network:
