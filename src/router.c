@@ -1,137 +1,133 @@
+#include <errno.h>
 #include <stdio.h>
-#include <pthread.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <string.h>
+#include <unistd.h>
+
+#include <pthread.h>
+
 #include <arpa/inet.h>
-#include <errno.h>
 #include <ifaddrs.h>
 #include <netdb.h>
-#include <errno.h>
-#include <stdlib.h>
+
+#include "hm.h"
 
 #include "router.h"
 
+#include "handlers.h"
+#include "threads.h"
+
+// handler for a new packet
+// this is itself a thread, so no need to spawn new threads
+// to call the more higher level handlers
+void *handle_packet(void *p)
+{
+	struct packet *packet = (struct packet *)p;
+
+	switch (packet->header->packet_type) {
+		case NEIGHBOR_REQ:
+			handle_neighbour_req_packet(packet);
+			break;
+		case NEIGHBOR_REQ_RESP:
+			handle_neighbour_resp_packet(packet);
+			break;
+		default:
+			break;
+	}
+
+	free(p);
+}
+
+// this function/thread loops on one connection and spawns threads
+// to deal with every new packet
+// kills itself when connection closed
 void *listener_loop(void *s)
 {
-	int *sock = (int *) s;
+	int sock = *((int *)s);
+	struct packet_header header;
+	struct packet *packet;
+	void *data;
+	int n;
 
 	while (1) {
-		char buf[80];
-		// TODO read HEADER_SIZE
-		int n = read(*sock, buf, 6);
-		if (n == 0) {
-			printf("disconnected\n");
-			pthread_exit(0);
-		} else if (n < 0) {
-			printf("error in read\n");
-			pthread_exit(0);
+		// read header
+		n = read(sock, &header, sizeof(header));
+		if (n <= 0)
+			goto exit;
+
+		// read data if necessary
+		data = NULL;
+		if (has_data(&header)) {
+			data = malloc(header.length);
+			n = read(sock, data, header.length);
+			if (n <= 0)
+				goto free_data;
 		}
 
-		printf("%d Received: %s\n", *sock, buf);
-		fflush(stdout);
-		//usleep(1000000);
+		// assemble packet to give to appropriate handler
+		packet = malloc(sizeof(struct packet));
+		packet->data = data;
+		packet->header = malloc(sizeof(header));
+		memcpy(packet->header, &header, sizeof(header));
+		packet->sock = sock;
+
+		// baton pass
+		pthread_t packet_handler_thread;
+		pthread_create(&packet_handler_thread, NULL, handle_packet, (void *)packet);
 	}
+
+free_data:
+	printf("data disconnected or error %d\n", n);
+	free(data);
+exit:
+	printf("header disconnected or error %d\n", n);
+	free(s);
+	pthread_exit(0);
 }
 
 // this function loops on the socket accepting connections
 // spawns thread to deal with connections
-void *listener_func(void *ls)
+void *listener_thread_func(void *ls)
 {
-	int *listen_sock = (int *) ls;
-	int listen_ret = listen(*listen_sock, 100);
-	if (listen_ret < 0) {
+	int *listen_sock = (int *)ls;
+	struct sockaddr_in sa;
+	socklen_t sa_size = sizeof(sa);
+	int accept_sock;
+	int *socket_fd;
+	int ret;
+
+	ret = listen(*listen_sock, 100);
+	if (ret < 0) {
 		perror("Error in listener listen call");
-	} else {
-		printf("listener is listening\n");
+		exit(1);
 	}
+
 	while (1) {
-		struct sockaddr_in sa2;
-		socklen_t sa2_size = sizeof(sa2);
-		int accept_sock = accept(*listen_sock, (struct sockaddr *)&sa2, &sa2_size);
-		// TODO add to hm for freeing purposes
-		int *socket_fd = (int*)malloc(sizeof(int));
-		*socket_fd = accept_sock;
+		accept_sock = accept(*listen_sock, (struct sockaddr *)&sa, &sa_size);
 		if (accept_sock < 0) {
 			perror("Error in accept in listener");
-		} else {
-			printf("connection made in listener: socket_fd = %d\n", *socket_fd);
-			pthread_t listener_loop_thread;
-			pthread_create(&listener_loop_thread, NULL, listener_loop, socket_fd);
-
+			continue;
 		}
-	}
-}
 
-void *writer_func()
-{
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		perror("Error making socket in writer 1\n");
-	}
+		socket_fd = (int*)malloc(sizeof(int));
+		*socket_fd = accept_sock;
 
-	struct sockaddr_in sa;
-	memset(&sa, 0 ,sizeof(sa));
-	sa.sin_port = htons(LISTEN_PORT);
-	sa.sin_addr.s_addr = inet_addr("127.0.1.1");
-	sa.sin_family = AF_INET;
-	printf("trying to connect writer 1\n");
-
-	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
-	if (con < 0) {
-		perror("error on connect in writer");
-	} else {
-		printf("writer 1 connected\n");
-	}
-
-	while (1) {
-		char *bufout = "Hello";
-		int n = write(sock, bufout, strlen(bufout)+1);
-		if (n < 0) {
-			perror("error in write 1\n");
-		}
-		usleep(1000000);
-	}
-}
-
-void *writer_func2()
-{
-	int sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0) {
-		perror("Error making socket in writer 2\n");
-	}
-	struct sockaddr_in sa;
-	memset(&sa, 0 ,sizeof(sa));
-	sa.sin_port = htons(LISTEN_PORT);
-	sa.sin_addr.s_addr = inet_addr("127.0.1.1");
-	sa.sin_family = AF_INET;
-	printf("trying to connect writer 2\n");
-	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
-	if (con < 0) {
-		perror("error on connect in writer");
-	} else {
-		printf("writer 2 connected\n");
-	}
-
-	while (1) {
-		char *bufout = "Mello";
-		int n = write(sock, bufout, strlen(bufout)+1);
-		if (n < 0) {
-			perror("error in write 2\n");
-		}
-		usleep(2000000);
+		printf("connection made in listener: socket_fd = %d\n", *socket_fd);
+		pthread_t listener_loop_thread;
+		pthread_create(&listener_loop_thread, NULL, listener_loop, socket_fd);
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	// set up listen socket
-	int listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+	int listen_sock;
+	
+	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0) {
 		perror("Error making socket for listener");
-	} else {
-		printf("Initial socket for listener successful\n");
+		return 1;
 	}
 
 	struct sockaddr_in sag;
@@ -139,24 +135,23 @@ int main(int argc, char *argv[])
 	sag.sin_port = htons(LISTEN_PORT);
 	sag.sin_addr.s_addr = inet_addr("0.0.0.0");
 	sag.sin_family = AF_INET;
-	bind(listen_sock, (struct sockaddr *)&sag,sizeof(sag));
+	bind(listen_sock, (struct sockaddr *)&sag, sizeof(sag));
 
-	printf("creating listener\n");
+	pthread_mutex_lock(&mutex_hm_neighbours);
+	hm_neighbours = createTable(16);
+	pthread_mutex_unlock(&mutex_hm_neighbours);
+
+	// TODO spawn timer threads
+
 	pthread_t listener_thread;
-	pthread_create(&listener_thread, NULL, listener_func, &listen_sock); 
+	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
-	usleep(2000000);
+	while (1)
+		usleep(10000000);
 
-	printf("creating writer 1\n");
-	pthread_t writer_thread;
-	pthread_create(&writer_thread, NULL, writer_func, NULL); 
+	pthread_mutex_lock(&mutex_hm_neighbours);
+	destroyTable(hm_neighbours);
+	pthread_mutex_unlock(&mutex_hm_neighbours);
 
-	printf("creating writer 2\n");
-	pthread_t writer_thread2;
-	pthread_create(&writer_thread2, NULL, writer_func2, NULL); 
-
-	while (1) {
-		usleep(1000000);
-	}
 	return 0;
 }
