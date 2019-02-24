@@ -13,14 +13,12 @@
 
 #include "router.h"
 
-static int socket_fd;
-
+//function for test purposes
 void *writer_func()
 {
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0)
 		perror("Error making socket in writer 1\n");
-	socket_fd = sock;
 
 	struct sockaddr_in sa;
 	memset(&sa, 0 ,sizeof(sa));
@@ -44,13 +42,109 @@ void *writer_func()
 	}
 }
 
+void add_neighbor()
+{
+	int counter;
+	printf("Specify an ID to send a neighbor request to:\n");
+	char neighbor_id[16];
+	scanf("%s", neighbor_id);
+	for(counter = 0; counter < 16; counter++){
+		if(neighbor_id[counter] == 0){
+			neighbor_id[counter] = '\0';	
+			break;
+		}
+	}
+	neighbor_id[15] = '\0';
+	printf("strlen of input %s: %d", neighbor_id, (int)strlen(neighbor_id));
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = htons(LISTEN_PORT);
+	sa.sin_addr.s_addr = inet_addr(neighbor_id);
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+	char *bufout = "Pello";
+	int n = write(sock, bufout, strlen(bufout)+1);
+	if (n < 0) {
+		perror("error in write to socket\n");
+		return;
+	}
+	//TODO read on the socket and wait for router to tell me success/fail and report that
+}
+
+void remove_neighbor()
+{
+	int counter;
+	printf("Specify an ID to remove:\n");
+	char neighbor_id[16];
+	scanf("%s", neighbor_id);
+	for(counter = 0; counter < 16; counter++){
+		if(neighbor_id[counter] == 0){
+			neighbor_id[counter] = '\0';	
+			break;
+		}
+	}
+	neighbor_id[15] = '\0';
+	printf("TODO\n");
+}
+
+void get_topology()
+{
+	printf("TODO\n");
+}
+
+void get_routing_table()
+{
+	printf("TODO\n");
+}
+
+void test_external_writer()
+{
+	printf("Testing External Writer:\n");
+	printf("	1 - Make thread to loop sending input\n");
+	printf("	2 - Send neighbor request\n");
+	char send_input[5];
+	scanf("%s", send_input);
+	if(atoi(send_input) == 1){
+		pthread_t writer_thread;
+		pthread_create(&writer_thread, NULL, writer_func, NULL); 
+	}else if(atoi(send_input)){
+		add_neighbor();
+	}
+}
+
 void process_input(char *input)
 {
 	int inp = atoi(input); 
-	if (inp == 5) {
-		printf("Testing External Writer\n");
-		pthread_t writer_thread;
-		pthread_create(&writer_thread, NULL, writer_func, NULL); 
+	switch(inp){
+		case 1:
+			add_neighbor();
+			break;
+		case 2:
+			remove_neighbor();
+			break;
+		case 3:
+			get_topology();
+			break;
+		case 4:
+			get_routing_tables();
+			break;
+		case 5:
+			test_external_writer();
+			break;
+		case 6:
+			break;
+
 	}
 
 }
@@ -62,8 +156,9 @@ void start_repl()
 		printf("	1 - Add neighbor\n");
 		printf("	2 - Remove neighbor\n");
 		printf("	3 - Get Topology\n");
-		printf("	4 - Buncha other stuff that isn't implemented\n");
+		printf("	4 - Get Routing Table\n");
 		printf("	5 - test external writer\n");
+		printf("	6 - Buncha other stuff that isn't implemented\n");
 		char input[5];
 		scanf("%s", input);
 		process_input(input);
