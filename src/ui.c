@@ -45,17 +45,26 @@ void *writer_func()
 void add_neighbor()
 {
 	int counter;
-	printf("Specify an ID to send a neighbor request to:\n");
-	char neighbor_id[16];
-	scanf("%s", neighbor_id);
+	char neighbor_id_sender[16];
+	char neighbor_id_to[16];
+	printf("Specify an ID to send a neighbor request from:\n");
+	scanf("%s", neighbor_id_sender);
 	for(counter = 0; counter < 16; counter++){
-		if(neighbor_id[counter] == 0){
-			neighbor_id[counter] = '\0';	
+		if(neighbor_id_sender[counter] == 0){
+			neighbor_id_sender[counter] = '\0';	
 			break;
 		}
 	}
-	neighbor_id[15] = '\0';
-	printf("strlen of input %s: %d", neighbor_id, (int)strlen(neighbor_id));
+	neighbor_id_sender[15] = '\0';
+	printf("Specify an ID to send a neighbor request to:\n");
+	scanf("%s", neighbor_id_to);
+	for(counter = 0; counter < 16; counter++){
+		if(neighbor_id_to[counter] == 0){
+			neighbor_id_to[counter] = '\0';	
+			break;
+		}
+	}
+	neighbor_id_to[15] = '\0';
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("Error making socket\n");
@@ -65,7 +74,7 @@ void add_neighbor()
 	struct sockaddr_in sa;
 	memset(&sa, 0 ,sizeof(sa));
 	sa.sin_port = htons(LISTEN_PORT);
-	sa.sin_addr.s_addr = inet_addr(neighbor_id);
+	sa.sin_addr.s_addr = inet_addr(neighbor_id_sender);
 	sa.sin_family = AF_INET;
 
 	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
@@ -73,7 +82,7 @@ void add_neighbor()
 		perror("error on connect in writer");
 		return;
 	}
-	char *bufout = "Pello";
+	char *bufout = "Pello";//TODO instead, write packet with neighbor_id_to
 	int n = write(sock, bufout, strlen(bufout)+1);
 	if (n < 0) {
 		perror("error in write to socket\n");
@@ -137,7 +146,7 @@ void process_input(char *input)
 			get_topology();
 			break;
 		case 4:
-			get_routing_tables();
+			get_routing_table();
 			break;
 		case 5:
 			test_external_writer();
