@@ -12,12 +12,16 @@
 #include <ifaddrs.h>
 #include <netdb.h>
 
-#include "hm.h"
+#include "lib/hm.h"
 
 #include "router.h"
 
 #include "handlers.h"
 #include "threads.h"
+#include "tools.h"
+
+pthread_mutex_t mutex_hm_neighbours = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_neighbours;
 
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads

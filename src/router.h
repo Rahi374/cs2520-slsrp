@@ -1,11 +1,13 @@
 #ifndef _ROUTER_DEFS_
 #define _ROUTER_DEFS_
 
+#include <pthread.h>
+
 // port that every router listens on
 #define LISTEN_PORT 50500
 
-pthread_mutex_t mutex_hm_neighbours = PTHREAD_MUTEX_INITIALIZER;
-struct table *hm_neighbours;
+extern pthread_mutex_t mutex_hm_neighbours;
+extern struct table *hm_neighbours;
 
 enum packet_type {
 	NAK,
@@ -36,17 +38,5 @@ struct packet {
 	void *data;
 	int sock;
 };
-
-int has_data(struct packet_header *header)
-{
-	// TODO
-	return 0;
-}
-
-unsigned int checksum_header(struct packet_header *header)
-{
-	// TODO
-	return 0;
-}
 
 #endif // _ROUTER_DEFS_

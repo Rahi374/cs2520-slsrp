@@ -8,6 +8,7 @@
 
 #include "handlers.h"
 #include "threads.h"
+#include "tools.h"
 
 void handle_neighbour_req_packet(struct packet *packet)
 {

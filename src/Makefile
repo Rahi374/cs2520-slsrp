@@ -1,8 +1,7 @@
 CC = gcc
-CFLAGS = -pthread
+CFLAGS = -pthread -Ilib
 
-router: router.c
-	$(CC) -o $@ $(CFLAGS) $^
+router: router.o handlers.o threads.o hm.o tools.o
 
 ui: ui.c
 	$(CC) -o $@ $(CFLAGS) $^
