@@ -148,6 +148,8 @@ int main(int argc, char *argv[])
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
+	printf("Main is done\n");
+
 	while (1)
 		usleep(10000000);
 
