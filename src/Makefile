@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -pthread -Ilib
+LDFLAGS = lpthread
 
 router: router.o handlers.o threads.o hm.o tools.o
 
