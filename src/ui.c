@@ -51,7 +51,7 @@ void add_neighbor()
 	scanf("%s", neighbor_id_sender);
 	for(counter = 0; counter < 16; counter++){
 		if(neighbor_id_sender[counter] == 0){
-			neighbor_id_sender[counter] = '\0';	
+			neighbor_id_sender[counter] = '\0';
 			break;
 		}
 	}
@@ -60,7 +60,7 @@ void add_neighbor()
 	scanf("%s", neighbor_id_to);
 	for(counter = 0; counter < 16; counter++){
 		if(neighbor_id_to[counter] == 0){
-			neighbor_id_to[counter] = '\0';	
+			neighbor_id_to[counter] = '\0';
 			break;
 		}
 	}
@@ -99,7 +99,7 @@ void remove_neighbor()
 	scanf("%s", neighbor_id);
 	for(counter = 0; counter < 16; counter++){
 		if(neighbor_id[counter] == 0){
-			neighbor_id[counter] = '\0';	
+			neighbor_id[counter] = '\0';
 			break;
 		}
 	}
@@ -126,7 +126,7 @@ void test_external_writer()
 	scanf("%s", send_input);
 	if(atoi(send_input) == 1){
 		pthread_t writer_thread;
-		pthread_create(&writer_thread, NULL, writer_func, NULL); 
+		pthread_create(&writer_thread, NULL, writer_func, NULL);
 	}else if(atoi(send_input)){
 		add_neighbor();
 	}
@@ -134,7 +134,7 @@ void test_external_writer()
 
 void process_input(char *input)
 {
-	int inp = atoi(input); 
+	int inp = atoi(input);
 	switch(inp){
 		case 1:
 			add_neighbor();
