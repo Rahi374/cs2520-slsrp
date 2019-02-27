@@ -55,32 +55,30 @@ void *listener_loop(void *s)
 	void *data;
 	int n;
 
-	while (1) {
-		// read header
-		n = read(sock, &header, sizeof(header));
+	// read header
+	n = read(sock, &header, sizeof(header));
+	if (n <= 0)
+		goto exit;
+
+	// read data if necessary
+	data = NULL;
+	if (has_data(&header)) {
+		data = malloc(header.length);
+		n = read(sock, data, header.length);
 		if (n <= 0)
-			goto exit;
-
-		// read data if necessary
-		data = NULL;
-		if (has_data(&header)) {
-			data = malloc(header.length);
-			n = read(sock, data, header.length);
-			if (n <= 0)
-				goto free_data;
-		}
-
-		// assemble packet to give to appropriate handler
-		packet = malloc(sizeof(struct packet));
-		packet->data = data;
-		packet->header = malloc(sizeof(header));
-		memcpy(packet->header, &header, sizeof(header));
-		packet->sock = sock;
-
-		// baton pass
-		pthread_t packet_handler_thread;
-		pthread_create(&packet_handler_thread, NULL, handle_packet, (void *)packet);
+			goto free_data;
 	}
+
+	// assemble packet to give to appropriate handler
+	packet = malloc(sizeof(struct packet));
+	packet->data = data;
+	packet->header = malloc(sizeof(header));
+	memcpy(packet->header, &header, sizeof(header));
+	packet->sock = sock;
+
+	// baton pass
+	pthread_t packet_handler_thread;
+	pthread_create(&packet_handler_thread, NULL, handle_packet, (void *)packet);
 
 free_data:
 	printf("data disconnected or error %d\n", n);
