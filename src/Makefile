@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -pthread -Ilib
-LDFLAGS = lpthread
+LDFLAGS = -pthread
 
 .PHONY: clean
 
