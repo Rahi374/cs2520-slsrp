@@ -86,7 +86,6 @@ free_data:
 	printf("data disconnected or error %d\n", n);
 	free(data);
 exit:
-	printf("header disconnected or error %d\n", n);
 	free(s);
 	pthread_exit(0);
 }
