@@ -20,8 +20,8 @@
 #include "threads.h"
 #include "tools.h"
 
-pthread_mutex_t mutex_hm_neighbours = PTHREAD_MUTEX_INITIALIZER;
-struct table *hm_neighbours;
+pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
+struct neighbour *neighbours_list;
 
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads
@@ -139,9 +139,12 @@ int main(int argc, char *argv[])
 	sag.sin_family = AF_INET;
 	bind(listen_sock, (struct sockaddr *)&sag, sizeof(sag));
 
-	pthread_mutex_lock(&mutex_hm_neighbours);
-	hm_neighbours = createTable(16);
-	pthread_mutex_unlock(&mutex_hm_neighbours);
+	// create neighbours list
+	pthread_mutex_lock(&mutex_neighbours_list);
+	if (!(neighbours_list = malloc(sizeof(struct neighbour))))
+		goto free_n;
+	INIT_LIST_HEAD((&neighbours_list->list));
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// TODO spawn timer threads
 
@@ -153,9 +156,10 @@ int main(int argc, char *argv[])
 	while (1)
 		usleep(10000000);
 
-	pthread_mutex_lock(&mutex_hm_neighbours);
-	destroyTable(hm_neighbours);
-	pthread_mutex_unlock(&mutex_hm_neighbours);
+	pthread_mutex_lock(&mutex_neighbours_list);
+free_n:
+	free(neighbours_list);
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	return 0;
 }

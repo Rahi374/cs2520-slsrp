@@ -14,6 +14,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 {
 	struct packet_header resp;
 	unsigned int *neighbour_router_id;
+	struct neighbour *neighbour;
 
 	// accept (or deny, but we want friends) neighbour request
 	// -> send response
@@ -27,9 +28,10 @@ void handle_neighbour_req_packet(struct packet *packet)
 	write(packet->sock, &resp, sizeof(resp));
 
 	// add to neighbour list
-	pthread_mutex_lock(&mutex_hm_neighbours);
-	insert(hm_neighbours, packet->header->source_id, 1);
-	pthread_mutex_unlock(&mutex_hm_neighbours);
+	pthread_mutex_lock(&mutex_neighbours_list);
+	neighbour = malloc(sizeof(struct neighbour));
+	list_add_tail(&neighbours_list->list, &neighbour->list);
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_id));
@@ -47,15 +49,17 @@ void handle_neighbour_req_packet(struct packet *packet)
 void handle_neighbour_resp_packet(struct packet *packet)
 {
 	unsigned int *neighbour_router_id;
+	struct neighbour *neighbour;
 
 	// do nothing if neighbour doesn't want to be friends
 	if (!packet->header->length)
 		return;
 
 	// add to neighbour list
-	pthread_mutex_lock(&mutex_hm_neighbours);
-	insert(hm_neighbours, packet->header->source_id, 1);
-	pthread_mutex_unlock(&mutex_hm_neighbours);
+	pthread_mutex_lock(&mutex_neighbours_list);
+	neighbour = malloc(sizeof(struct neighbour));
+	list_add_tail(&neighbours_list->list, &neighbour->list);
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_id));
