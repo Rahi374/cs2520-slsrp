@@ -3,11 +3,13 @@
 
 #include <pthread.h>
 
+#include "list.h"
+
 // port that every router listens on
 #define LISTEN_PORT 50500
 
-extern pthread_mutex_t mutex_hm_neighbours;
-extern struct table *hm_neighbours;
+extern pthread_mutex_t mutex_neighbours_list;
+extern struct neighbour *neighbours_list;
 
 enum packet_type {
 	NAK,
@@ -38,6 +40,11 @@ struct packet {
 	struct packet_header *header;
 	void *data;
 	int sock;
+};
+
+struct neighbour {
+	unsigned int id;
+	struct list_head list;
 };
 
 #endif // _ROUTER_DEFS_
