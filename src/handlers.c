@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -68,4 +69,18 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	*neighbour_router_id = packet->header->source_id;
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
+}
+
+void handle_test_packet(struct packet *packet)
+{
+	printf("test packet received\n");
+	fflush(stdout);
+	printf("data length: %d\n", packet->header->length);
+	fflush(stdout);
+	printf("packet data:\n");
+	fflush(stdout);
+	printf("%s\n", (char*)packet->data);
+	fflush(stdout);
+	printf("done with data\n");
+
 }

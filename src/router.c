@@ -37,6 +37,8 @@ void *handle_packet(void *p)
 		case NEIGHBOR_REQ_RESP:
 			handle_neighbour_resp_packet(packet);
 			break;
+		case TEST_PACKET:
+			handle_test_packet(packet);
 		default:
 			break;
 	}
@@ -56,15 +58,14 @@ void *listener_loop(void *s)
 	int n;
 
 	// read header
-	n = read(sock, &header, sizeof(header));
+	n = read_all_bytes_from_socket(sock, &header, sizeof(header));
 	if (n <= 0)
 		goto exit;
-
 	// read data if necessary
 	data = NULL;
 	if (has_data(&header)) {
 		data = malloc(header.length);
-		n = read(sock, data, header.length);
+		n = read_all_bytes_from_socket(sock, data, header.length);
 		if (n <= 0)
 			goto free_data;
 	}
@@ -79,6 +80,7 @@ void *listener_loop(void *s)
 	// baton pass
 	pthread_t packet_handler_thread;
 	pthread_create(&packet_handler_thread, NULL, handle_packet, (void *)packet);
+	goto exit;
 
 free_data:
 	printf("data disconnected or error %d\n", n);

@@ -19,6 +19,7 @@ enum packet_type {
 	ALIVE,
 	LINK_COST,
 	LINK_DOWN,
+	TEST_PACKET,
 };
 
 // depending on the packet type, the length might simply contain the data

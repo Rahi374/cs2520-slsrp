@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "router.h"
+#include "tools.h"
 
 //function for test purposes
 void *writer_func()
@@ -82,8 +83,14 @@ void add_neighbor()
 		perror("error on connect in writer");
 		return;
 	}
-	char *bufout = "Pello";//TODO instead, write packet with neighbor_id_to
-	int n = write(sock, bufout, strlen(bufout)+1);
+	char *msg = "I am a msg of a different length";
+	struct packet_header pack_header;
+	pack_header.packet_type = TEST_PACKET;
+	pack_header.length = strlen(msg)+1;
+	int pack_size = sizeof(struct packet_header)+strlen(msg)+1;
+	void *pack = malloc(pack_size);
+	concat_header_and_data(pack, &pack_header, msg, strlen(msg)+1);
+	int n = write(sock, pack, pack_size);
 	if (n < 0) {
 		perror("error in write to socket\n");
 		return;

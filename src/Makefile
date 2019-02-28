@@ -6,8 +6,7 @@ LDFLAGS = -pthread
 
 router: router.o handlers.o threads.o hm.o tools.o
 
-ui: ui.c
-	$(CC) -o $@ $(CFLAGS) $^
+ui: ui.o tools.o
 
 clean:
 	$(RM) *.o router ui
