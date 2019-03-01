@@ -87,10 +87,10 @@ void add_neighbor()
 	struct packet_header pack_header;
 	pack_header.packet_type = TEST_PACKET;
 	pack_header.length = strlen(msg)+1;
-	int pack_size = sizeof(struct packet_header)+strlen(msg)+1;
-	void *pack = malloc(pack_size);
-	concat_header_and_data(pack, &pack_header, msg, strlen(msg)+1);
-	int n = write(sock, pack, pack_size);
+	//int pack_size = sizeof(struct packet_header)+strlen(msg)+1;
+	//void *pack = malloc(pack_size);
+	//concat_header_and_data(pack, &pack_header, msg, strlen(msg)+1);
+	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
 	if (n < 0) {
 		perror("error in write to socket\n");
 		return;

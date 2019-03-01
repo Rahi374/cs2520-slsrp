@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -26,6 +27,16 @@ void concat_header_and_data(void *dest, struct packet_header *header, void *data
 	memcpy((char*)dest + sizeof(struct packet_header), data_pointer, data_size);
 }
 
+int write_header_and_data(int sock, struct packet_header *header, void *data_pointer, int data_size)
+{
+	int pack_size = sizeof(struct packet_header) + data_size;
+	void *pack = malloc(pack_size);
+	concat_header_and_data(pack, header, data_pointer, data_size);
+	int n = write(sock, pack, pack_size);
+	free(pack);
+	return n;
+}
+
 int read_all_bytes_from_socket(int sock, void *dest, int num_bytes)
 {
 	int bytes_read = 0;
@@ -37,3 +48,4 @@ int read_all_bytes_from_socket(int sock, void *dest, int num_bytes)
 	}
 	return bytes_read;
 }
+
