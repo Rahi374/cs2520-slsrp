@@ -14,6 +14,9 @@
 #include "router.h"
 #include "tools.h"
 
+char *router_ip;
+int router_port;
+
 //function for test purposes
 void *writer_func()
 {
@@ -23,7 +26,7 @@ void *writer_func()
 
 	struct sockaddr_in sa;
 	memset(&sa, 0 ,sizeof(sa));
-	sa.sin_port = htons(LISTEN_PORT);
+	sa.sin_port = 0;
 	sa.sin_addr.s_addr = inet_addr("172.18.0.2");
 	sa.sin_family = AF_INET;
 
@@ -46,17 +49,9 @@ void *writer_func()
 void add_neighbor()
 {
 	int counter;
-	char neighbor_id_sender[16];
 	char neighbor_id_to[16];
-	printf("Specify an ID to send a neighbor request from:\n");
-	scanf("%s", neighbor_id_sender);
-	for(counter = 0; counter < 16; counter++){
-		if(neighbor_id_sender[counter] == 0){
-			neighbor_id_sender[counter] = '\0';
-			break;
-		}
-	}
-	neighbor_id_sender[15] = '\0';
+	char neighbor_port_to[10];//not used yet, will need to readdress
+
 	printf("Specify an ID to send a neighbor request to:\n");
 	scanf("%s", neighbor_id_to);
 	for(counter = 0; counter < 16; counter++){
@@ -66,6 +61,17 @@ void add_neighbor()
 		}
 	}
 	neighbor_id_to[15] = '\0';
+	printf("Specify a port for that neighbor:\n");
+	scanf("%s", neighbor_port_to);
+	for(counter = 0; counter < 10; counter++){
+		if(neighbor_port_to[counter] == 0){
+			neighbor_port_to[counter] = '\0';
+			break;
+		}
+	}
+	neighbor_port_to[9] = '\0';
+	int neighbor_port_to_int = atoi(neighbor_port_to);
+
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("Error making socket\n");
@@ -74,8 +80,8 @@ void add_neighbor()
 
 	struct sockaddr_in sa;
 	memset(&sa, 0 ,sizeof(sa));
-	sa.sin_port = htons(LISTEN_PORT);
-	sa.sin_addr.s_addr = inet_addr(neighbor_id_sender);
+	sa.sin_port = router_port;
+	sa.sin_addr.s_addr = inet_addr(router_ip);
 	sa.sin_family = AF_INET;
 
 	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
@@ -84,12 +90,14 @@ void add_neighbor()
 		return;
 	}
 	char *msg = "I am a msg of a different length";
+	//fill packet
 	struct packet_header pack_header;
 	pack_header.packet_type = TEST_PACKET;
 	pack_header.length = strlen(msg)+1;
-	//int pack_size = sizeof(struct packet_header)+strlen(msg)+1;
-	//void *pack = malloc(pack_size);
-	//concat_header_and_data(pack, &pack_header, msg, strlen(msg)+1);
+	inet_aton(router_ip, &pack_header.destination_addr);
+	pack_header.destination_port = router_port;
+	//pack_header.source_addr = inet_aton();//TODO
+	//pack_header.source_port = ;
 	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
 	if (n < 0) {
 		perror("error in write to socket\n");
@@ -184,10 +192,12 @@ void start_repl()
 
 int main(int argc, char *argv[])
 {
-	if (argc == 1)
+	if (argc < 3){
+		printf("needs ip and port\n");
+	}else{
+		router_ip = argv[1];
+		router_port = atoi(argv[2]);
 		start_repl();
-	else
-		printf("UI with command line args\n");
-
+	}
 	return 0;
 }

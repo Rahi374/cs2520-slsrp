@@ -126,7 +126,7 @@ void *listener_thread_func(void *ls)
 int main(int argc, char *argv[])
 {
 	int listen_sock;
-	
+		
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0) {
 		perror("Error making socket for listener");
@@ -135,10 +135,13 @@ int main(int argc, char *argv[])
 
 	struct sockaddr_in sag;
 	memset(&sag, 0, sizeof(sag));
-	sag.sin_port = htons(LISTEN_PORT);
-	sag.sin_addr.s_addr = inet_addr("0.0.0.0");
+	sag.sin_port = 0;
+	//sag.sin_addr.s_addr = inet_addr("0.0.0.0");
+	sag.sin_addr.s_addr = INADDR_ANY;
 	sag.sin_family = AF_INET;
 	bind(listen_sock, (struct sockaddr *)&sag, sizeof(sag));
+	int sag_size = sizeof(sag);
+	getsockname(listen_sock, (struct sockaddr *)&sag, &sag_size);
 
 	// create neighbours list
 	pthread_mutex_lock(&mutex_neighbours_list);
@@ -152,7 +155,8 @@ int main(int argc, char *argv[])
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
-	printf("Main is done\n");
+	printf("Router is set up and listening on port %d\n", sag.sin_port);
+	fflush(stdout);
 
 	while (1)
 		usleep(10000000);
