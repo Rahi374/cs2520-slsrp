@@ -23,7 +23,7 @@ void *alive_thread(void *id)
 		//TODO loop sending messages, check num-unacked first to see if need to die
 		//need to re-grab control_structure each time
 		printf("alive thread proc\n");
-		struct alive_control_struct *con_struct = (struct alive_control_struct*)lookup(hm_alive, *id);
+		struct alive_control_struct *con_struct = (struct alive_control_struct*)lookup(hm_alive, n_router_id);
 		pthread_mutex_lock(&con_struct->mutex_alive_control_struct);
 		if (con_struct->num_unacked_messages > MAX_UNACKED_ALIVE_MESSAGES){
 			//die

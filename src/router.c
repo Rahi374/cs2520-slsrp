@@ -39,8 +39,15 @@ void *handle_packet(void *p)
 		case NEIGHBOR_REQ_RESP:
 			handle_neighbour_resp_packet(packet);
 			break;
+		case ALIVE:
+			handle_alive_packet(packet);
+			break;
+		case ALIVE_RESP:
+			handle_alive_resp_packet(packet);
+			break;
 		case TEST_PACKET:
 			handle_test_packet(packet);
+			break;
 		default:
 			break;
 	}
@@ -48,10 +55,9 @@ void *handle_packet(void *p)
 	free(p);
 }
 
-// this function/thread loops on one connection and spawns threads
 // to deal with every new packet
 // kills itself when connection closed
-void *listener_loop(void *s)
+void *listener_dispatch(void *s)
 {
 	int sock = *((int *)s);
 	struct packet_header header;
@@ -120,8 +126,8 @@ void *listener_thread_func(void *ls)
 		*socket_fd = accept_sock;
 
 		printf("connection made in listener: socket_fd = %d\n", *socket_fd);
-		pthread_t listener_loop_thread;
-		pthread_create(&listener_loop_thread, NULL, listener_loop, socket_fd);
+		pthread_t listener_dispatch_thread;
+		pthread_create(&listener_dispatch_thread, NULL, listener_dispatch, socket_fd);
 	}
 }
 

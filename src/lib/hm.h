@@ -2,8 +2,8 @@
 #define _HASHMAP_H
 
 struct node {
-	int key;
-	int val;
+	unsigned int key;
+	void *val;
 	struct node *next;
 };
 
@@ -14,10 +14,10 @@ struct table {
 
 struct table *createTable(int size);
 void *destroyTable(struct table *t);
-int hashCode(struct table *t,int key);
-void insert(struct table *t, int key, int val);
-int lookup(struct table *t, int key);
-int delete(struct table *t, int key);
+int hashCode(struct table *t, unsigned int key);
+void insert(struct table *t, unsigned int key, void *val);
+void* lookup(struct table *t, unsigned int key);
+void* delete(struct table *t, unsigned int key);
 
 /*
    int main()

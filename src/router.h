@@ -22,6 +22,7 @@ enum packet_type {
 	NEIGHBOR_REQ_RESP,
 	LSA,
 	ALIVE,
+	ALIVE_RESP,
 	LINK_COST,
 	LINK_DOWN,
 	TEST_PACKET,

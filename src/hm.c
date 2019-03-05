@@ -20,14 +20,14 @@ void *destroyTable(struct table *t)
 	free(t);
 }
 
-int hashCode(struct table *t,int key)
+int hashCode(struct table *t, unsigned int key)
 {
 	if (key < 0)
 		return -(key % t->size);
 	return key % t->size;
 }
 
-void insert(struct table *t, int key, int val)
+void insert(struct table *t, unsigned int key, void *val)
 {
 	int pos = hashCode(t, key);
 	struct node *list = t->list[pos];
@@ -46,7 +46,7 @@ void insert(struct table *t, int key, int val)
 	t->list[pos] = newNode;
 }
 
-int lookup(struct table *t, int key)
+void *lookup(struct table *t, unsigned int key)
 {
 	int pos = hashCode(t, key);
 	struct node *list = t->list[pos];
@@ -57,10 +57,10 @@ int lookup(struct table *t, int key)
 		}
 		temp = temp->next;
 	}
-	return -1;
+	return (void*)0;
 }
 
-int delete(struct table *t, int key)
+void *delete(struct table *t, unsigned int key)
 {
 	int pos = hashCode(t, key);
 	struct node *list = t->list[pos];
@@ -68,7 +68,7 @@ int delete(struct table *t, int key)
 	struct node *prev = NULL;
 	while (temp) {
 		if (temp->key == key) {
-			//removing the first node
+			void *ret_val = temp->val;
 			if (temp == list) {
 				t->list[pos] = temp->next;
 			} else {
@@ -76,12 +76,12 @@ int delete(struct table *t, int key)
 			}
 			free(temp);
 
-			return 1;
+			return ret_val;
 		}
 		prev = temp;
 		temp = temp->next;
 	}
-	return -1;
+	return (void*)0;
 }
 
 /*

@@ -96,6 +96,7 @@ void add_neighbor()
 	pack_header.length = strlen(msg)+1;
 	inet_aton(router_ip, &pack_header.destination_addr);
 	pack_header.destination_port = router_port;
+	inet_aton("178.18.0.2", &pack_header.source_addr);//TODO remove
 	//pack_header.source_addr = inet_aton();//TODO
 	//pack_header.source_port = ;
 	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
