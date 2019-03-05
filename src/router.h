@@ -8,8 +8,11 @@
 
 #include "list.h"
 
+#define MAX_UNACKED_ALIVE_MESSAGES 10
+
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
+extern struct table *hm_alive;
 
 enum packet_type {
 	NAK,
@@ -49,6 +52,12 @@ struct packet {
 struct neighbour {
 	unsigned int id;
 	struct list_head list;
+};
+
+struct alive_control_struct {
+	pthread_mutex_t mutex_alive_control_struct;
+	pid_t pid_of_control_thread;
+	int num_unacked_messages;
 };
 
 #endif // _ROUTER_DEFS_

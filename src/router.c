@@ -23,6 +23,8 @@
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
 
+struct table *hm_alive;
+
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads
 // to call the more higher level handlers
@@ -150,8 +152,11 @@ int main(int argc, char *argv[])
 	INIT_LIST_HEAD((&neighbours_list->list));
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
-	// TODO spawn timer threads
+	hm_alive = createTable(100);
+	if (!hm_alive)
+		goto free_hm_alive;
 
+	// TODO spawn timer threads
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
@@ -165,6 +170,8 @@ int main(int argc, char *argv[])
 free_n:
 	free(neighbours_list);
 	pthread_mutex_unlock(&mutex_neighbours_list);
+free_hm_alive:
+	free(hm_alive);
 
 	return 0;
 }
