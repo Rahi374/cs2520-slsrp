@@ -14,6 +14,7 @@
 
 #include "hm.h"
 #include "handlers.h"
+#include "ini.h"
 #include "router.h"
 #include "threads.h"
 #include "tools.h"
@@ -21,6 +22,17 @@
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
 struct hosts_list hosts;
+
+int read_ini(void* user, const char* section,
+		 const char* name, const char* value)
+{
+	char h[30];
+
+	gethostname(h, 30);
+	printf("hostname %s, section %s, name %s, value %s\n", h, section, name, value);
+	fflush(stdout);
+	return 1;
+}
 
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads
@@ -146,6 +158,7 @@ int main(int argc, char *argv[])
 	INIT_LIST_HEAD((&neighbours_list->list));
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
+	ini_parse("config.ini", read_ini, &hosts);
 	// TODO spawn timer threads
 
 	pthread_t listener_thread;
