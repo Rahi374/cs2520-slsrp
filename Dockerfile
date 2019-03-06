@@ -6,7 +6,8 @@ RUN apk update && apk add gcc make musl-dev libc-dev
 
 WORKDIR /router
 COPY ./src /router
-RUN make router
+#COPY config.ini /router
+RUN make clean && make router
 
 #CMD ["./router", "config"]
 CMD ["./router"]
