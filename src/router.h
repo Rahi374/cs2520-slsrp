@@ -10,6 +10,7 @@
 
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
+extern struct hosts_list hosts;
 
 enum packet_type {
 	NAK,
@@ -45,6 +46,16 @@ struct packet {
 struct neighbour {
 	unsigned int id;
 	struct list_head list;
+};
+
+struct host {
+	char *hostname;
+	unsigned int addr;
+};
+
+struct hosts_list {
+	struct host *hosts;
+	int n_hosts;
 };
 
 #endif // _ROUTER_DEFS_
