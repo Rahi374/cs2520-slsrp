@@ -17,7 +17,7 @@ class GetInfoByAddress(Resource):
             return name+":"+port 
         except:
             print("no info found for that addr")
-            return 0
+            return "0"
 
 class GetInfoByName(Resource):
     def get(self, name):
@@ -28,7 +28,7 @@ class GetInfoByName(Resource):
             return addr+":"+port
         except:
             print("no info found for that name")
-            return 0;
+            return "0"
 
 class PostInfoForRouter(Resource):
     def post(self, name, addr, port):
@@ -43,9 +43,9 @@ class RemoveRouter(Resource):
             name, port = addr_to_info[addr]
             del addr_to_info[addr]
             del name_to_info[name]
-            return 1
+            return "1"
         except:
-            return 0
+            return "0"
 
 
 api.add_resource(GetInfoByAddress, '/addr/<string:address>')
