@@ -17,7 +17,6 @@ extern struct table *hm_alive;
 enum packet_type {
 	NAK,
 	ACK,
-	UI_CONTROL,
 	NEIGHBOR_REQ,
 	NEIGHBOR_REQ_RESP,
 	LSA,
@@ -25,6 +24,9 @@ enum packet_type {
 	ALIVE_RESP,
 	LINK_COST,
 	LINK_DOWN,
+	UI_CONTROL_ADD_NEIGHBOUR,
+	UI_CONTROL_KILL_NEIGHBOUR,
+	UI_CONTROL_GIMME_ROUTING_TABLE,
 	TEST_PACKET,
 };
 
