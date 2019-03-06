@@ -8,5 +8,8 @@ router: router.o handlers.o threads.o hm.o tools.o
 
 ui: ui.o tools.o
 
+naming: naming.c
+	$(CC) $^ -lcurl -o $@
+
 clean:
 	$(RM) *.o router ui
