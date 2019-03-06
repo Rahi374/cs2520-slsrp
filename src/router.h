@@ -59,6 +59,8 @@ struct alive_control_struct {
 	pthread_mutex_t mutex_alive_control_struct;
 	pid_t pid_of_control_thread;
 	int num_unacked_messages;
+	struct in_addr n_addr;
+	int n_port;
 };
 
 #endif // _ROUTER_DEFS_

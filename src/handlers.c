@@ -70,6 +70,16 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_id));
 	*neighbour_router_id = packet->header->source_id;
+
+
+	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
+	control_struct_alive->mutex_alive_control_struct = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
+	control_struct_alive->num_unacked_messages = 0;
+	control_struct_alive->pid_of_control_thread = getpid();
+	control_struct_alive->n_addr = packet->header->source_addr;
+	control_struct_alive->n_port = packet->header->source_port;
+	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 

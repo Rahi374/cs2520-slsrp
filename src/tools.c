@@ -48,4 +48,3 @@ int read_all_bytes_from_socket(int sock, void *dest, int num_bytes)
 	}
 	return bytes_read;
 }
-
