@@ -14,6 +14,9 @@ extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
 extern struct table *hm_alive;
 
+extern struct in_addr cur_router_id;
+extern int cur_router_port;
+
 enum packet_type {
 	NAK,
 	ACK,
