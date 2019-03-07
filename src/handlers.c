@@ -6,13 +6,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-
-
 #include "hm.h"
-
-#include "router.h"
-
 #include "handlers.h"
+#include "router.h"
 #include "threads.h"
 #include "tools.h"
 
@@ -71,7 +67,6 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 
-
 	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
 	control_struct_alive->mutex_alive_control_struct = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 	control_struct_alive->num_unacked_messages = 0;
@@ -113,6 +108,21 @@ void handle_alive_resp_packet(struct packet *packet)
 	pthread_mutex_unlock(&con_struct->mutex_alive_control_struct);
 }
 
+void handle_ui_control_add_neighbour(struct packet *packet)
+{
+	struct add_neighbour_command *input;
+
+	input = malloc(sizeof(struct add_neighbour_command));
+	if (!input) {
+		printf("failed to allocate memory for add neighbour thread input\n");
+		return;
+	}
+	memcpy(input, packet->data, sizeof(struct add_neighbour_command));
+
+	pthread_t add_neighbour_t;
+	pthread_create(&add_neighbour_t, NULL, add_neighbour_thread, (void *)input);
+}
+
 void handle_test_packet(struct packet *packet)
 {
 	printf("test packet received\n");
@@ -126,5 +136,4 @@ void handle_test_packet(struct packet *packet)
 	printf("%s\n", (char*)packet->data);
 	fflush(stdout);
 	printf("done with data\n");
-
 }

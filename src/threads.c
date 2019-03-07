@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "hm.h"
 #include "router.h"
-#include "lib/hm.h"
+#include "tools.h"
 
 void *lc_thread(void *id)
 {
@@ -31,4 +32,62 @@ void *alive_thread(void *id)
 		usleep(1000000);
 
 	}
+}
+
+void *add_neighbour_thread(void *id)
+{
+	printf("starting neighbour thread\n");
+
+	struct add_neighbour_command *n_router_full_id = (struct add_neighbour_command *)id;
+	struct neighbour *ptr;
+	int i;
+	int sock;
+	int con;
+	struct sockaddr_in sa;
+
+	// initialize socket
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("error making socker");
+		goto die;
+	}
+
+	sa.sin_port = n_router_full_id->neighbour_port;
+	sa.sin_addr.s_addr = n_router_full_id->neighbour_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error making connection");
+		goto die;
+	}
+
+	for (i = 0; i < 3; i++) {
+		// if not in neighbours list
+		pthread_mutex_lock(&mutex_neighbours_list);
+		list_for_each_entry(ptr, &neighbours_list->list, list) {
+			if (ptr->id == n_router_full_id->neighbour_addr.s_addr)
+				goto free;
+		}
+		pthread_mutex_unlock(&mutex_neighbours_list);
+
+		// send neighbour request
+		struct packet_header header;
+		header.packet_type = NEIGHBOR_REQ;
+		header.length = 0;
+		header.destination_addr.s_addr = n_router_full_id->neighbour_addr.s_addr;
+		header.destination_port = n_router_full_id->neighbour_port;
+		header.source_addr = sa.sin_addr;
+		header.source_port = sa.sin_port;
+
+		write_header_and_data(sock, &header, 0, 0);
+
+		usleep(2000000);
+	}
+
+die:
+	printf("failed to be friends with neighbour %s\n",
+		inet_ntoa(n_router_full_id->neighbour_addr));
+free:
+	free(id);
 }
