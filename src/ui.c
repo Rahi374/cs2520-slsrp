@@ -89,8 +89,6 @@ void add_neighbor()
 		perror("error on connect in writer");
 		return;
 	}
-	char *msg = "I am a msg of a different length";
-	//fill packet
 	struct packet_header pack_header;
 	pack_header.packet_type = UI_CONTROL_ADD_NEIGHBOUR;
 	pack_header.length = strlen(msg)+1;
@@ -98,7 +96,11 @@ void add_neighbor()
 	pack_header.destination_port = router_port;
 	pack_header.source_addr = sa.sin_addr;
 	pack_header.source_port = sa.sin_port;
-	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
+
+	struct add_neighbour_command neighbour_struct;
+	neighbour_struct.neighbour_port = (unsigned int)neighbor_port_to_int;
+	inet_aton(neighbor_id_to, &neighbour_struct.neighbour_addr);
+	int n = write_header_and_data(sock, &pack_header, msg, sizeof(struct add_neighbour_command));
 	if (n < 0) {
 		perror("error in write to socket\n");
 		return;
