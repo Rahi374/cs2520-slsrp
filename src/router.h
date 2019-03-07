@@ -34,10 +34,8 @@ enum packet_type {
 // NEIGHBOR_REQ - no data
 // NEIGHBOR_REQ_RESP - 0 for negative, 1 for affirmative
 struct packet_header {
-	unsigned int source_id;//TODO get rid of
 	struct in_addr source_addr;
 	unsigned int source_port;
-	unsigned int destination_id;//TODO get rid of
 	struct in_addr destination_addr;
 	unsigned int destination_port;
 	enum packet_type packet_type;

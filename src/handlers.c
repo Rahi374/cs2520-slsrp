@@ -25,8 +25,8 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// accept (or deny, but we want friends) neighbour request
 	// -> send response
 	memset(&resp, 0, sizeof(resp));
-	resp.source_id = packet->header->destination_id;
-	resp.destination_id = packet->header->source_id;
+	resp.source_addr = packet->header->destination_addr;
+	resp.destination_addr = packet->header->source_addr;
 	resp.packet_type = NEIGHBOR_REQ_RESP;
 	resp.length = 1;
 	resp.checksum_header = checksum_header(&resp);
@@ -40,14 +40,14 @@ void handle_neighbour_req_packet(struct packet *packet)
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
-	neighbour_router_id = malloc(sizeof(packet->header->source_id));
-	*neighbour_router_id = packet->header->source_id;
+	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
+	*neighbour_router_id = packet->header->source_addr.s_addr;
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
 	// spawn LCthread
-	neighbour_router_id = malloc(sizeof(packet->header->source_id));
-	*neighbour_router_id = packet->header->source_id;
+	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
+	*neighbour_router_id = packet->header->source_addr.s_addr;
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
 }
@@ -68,8 +68,8 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
-	neighbour_router_id = malloc(sizeof(packet->header->source_id));
-	*neighbour_router_id = packet->header->source_id;
+	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
+	*neighbour_router_id = packet->header->source_addr.s_addr;
 
 
 	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
@@ -84,8 +84,8 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
 	// spawn LCthread
-	neighbour_router_id = malloc(sizeof(packet->header->source_id));
-	*neighbour_router_id = packet->header->source_id;
+	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
+	*neighbour_router_id = packet->header->source_addr.s_addr;
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
 }
