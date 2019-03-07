@@ -59,7 +59,8 @@ struct add_neighbour_command {
 };
 
 struct neighbour {
-	unsigned int id;
+	struct in_addr id;
+	unsigned int port;
 	struct list_head list;
 };
 

@@ -17,22 +17,44 @@ void handle_neighbour_req_packet(struct packet *packet)
 	struct packet_header resp;
 	unsigned int *neighbour_router_id;
 	struct neighbour *neighbour;
+	int sock;
+	int con;
+	struct sockaddr_in sa;
+
+	// initialize socket
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("error making socker");
+		return;
+	}
+
+	sa.sin_port = packet->header->source_port;
+	sa.sin_addr.s_addr = packet->header->source_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error making connection");
+		return;
+	}
 
 	// accept (or deny, but we want friends) neighbour request
 	// -> send response
 	memset(&resp, 0, sizeof(resp));
-	resp.source_addr = packet->header->destination_addr;
-	resp.destination_addr = packet->header->source_addr;
+	resp.source_addr.s_addr = packet->header->destination_addr.s_addr;
+	resp.destination_addr.s_addr = packet->header->source_addr.s_addr;
 	resp.packet_type = NEIGHBOR_REQ_RESP;
 	resp.length = 1;
 	resp.checksum_header = checksum_header(&resp);
 	// assume it succeeds
-	write(packet->sock, &resp, sizeof(resp));
+	write(sock, &resp, sizeof(resp));
 
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
 	neighbour = malloc(sizeof(struct neighbour));
-	list_add_tail(&neighbours_list->list, &neighbour->list);
+	neighbour->id.s_addr = packet->header->source_addr.s_addr;
+	neighbour->port = packet->header->source_port;
+	list_add_tail(&(neighbour->list), &(neighbours_list->list));
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
@@ -60,7 +82,9 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
 	neighbour = malloc(sizeof(struct neighbour));
-	list_add_tail(&neighbours_list->list, &neighbour->list);
+	neighbour->id.s_addr = packet->header->source_addr.s_addr;
+	neighbour->port = packet->header->source_port;
+	list_add_tail(&(neighbour->list), &(neighbours_list->list));
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
@@ -115,6 +139,7 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 	input = malloc(sizeof(struct add_neighbour_command));
 	if (!input) {
 		printf("failed to allocate memory for add neighbour thread input\n");
+		fflush(stdout);
 		return;
 	}
 	memcpy(input, packet->data, sizeof(struct add_neighbour_command));
