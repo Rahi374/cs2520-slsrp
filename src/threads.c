@@ -53,12 +53,14 @@ void *add_neighbour_thread(void *id)
 	struct sockaddr_in sa;
 
 	// initialize socket
+	dprintf("initializing socker for add neighbour\n");
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("error making socker");
 		goto die;
 	}
 
+	dprintf("connecting to socket to add neighbour\n");
 	sa.sin_port = n_router_full_id->neighbour_port;
 	sa.sin_addr.s_addr = n_router_full_id->neighbour_addr.s_addr;
 	sa.sin_family = AF_INET;
@@ -70,6 +72,7 @@ void *add_neighbour_thread(void *id)
 	}
 
 	for (i = 0; i < 3; i++) {
+		dprintf("try #%d to add neighbour\n", i);
 		// if not in neighbours list
 		pthread_mutex_lock(&mutex_neighbours_list);
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
@@ -78,6 +81,7 @@ void *add_neighbour_thread(void *id)
 		}
 		pthread_mutex_unlock(&mutex_neighbours_list);
 
+		dprintf("sending neighbour request\n");
 		// send neighbour request
 		struct packet_header header;
 		header.packet_type = NEIGHBOR_REQ;
@@ -88,6 +92,8 @@ void *add_neighbour_thread(void *id)
 		header.source_port = cur_router_port;
 
 		write_header_and_data(sock, &header, 0, 0);
+
+		dprintf("sent neighbour request\n");
 
 		usleep(2000000);
 	}

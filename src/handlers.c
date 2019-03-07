@@ -21,13 +21,18 @@ void handle_neighbour_req_packet(struct packet *packet)
 	int con;
 	struct sockaddr_in sa;
 
+	dprintf("handling neighbour req packet\n");
+
 	// initialize socket
+	dprintf("initializing socker for respondingn to add neighbour\n");
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("error making socker");
 		return;
 	}
 
+	dprintf("connecting to socket to respond to add neighbour, port %u\n",
+			packet->header->source_port);
 	sa.sin_port = packet->header->source_port;
 	sa.sin_addr.s_addr = packet->header->source_addr.s_addr;
 	sa.sin_family = AF_INET;
@@ -49,31 +54,40 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// assume it succeeds
 	write(sock, &resp, sizeof(resp));
 
+	dprintf("adding to neighbour list\n");
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
+	dprintf("mallocing\n");
 	neighbour = malloc(sizeof(struct neighbour));
+	dprintf("adding to list\n");
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
+	dprintf("spawning alive thread\n");
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
+	dprintf("spawning lc thread\n");
 	// spawn LCthread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
+
+	close(sock);
 }
 
 void handle_neighbour_resp_packet(struct packet *packet)
 {
 	unsigned int *neighbour_router_id;
 	struct neighbour *neighbour;
+
+	dprintf("received neighbour response\n");
 
 	// do nothing if neighbour doesn't want to be friends
 	if (!packet->header->length)
@@ -136,29 +150,27 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 {
 	struct add_neighbour_command *input;
 
+	dprintf("received ui command to add neighbour!\n");
+
 	input = malloc(sizeof(struct add_neighbour_command));
 	if (!input) {
-		printf("failed to allocate memory for add neighbour thread input\n");
-		fflush(stdout);
+		dprintf("failed to allocate memory for add neighbour thread input\n");
 		return;
 	}
+	dprintf("memcpying\n");
 	memcpy(input, packet->data, sizeof(struct add_neighbour_command));
 
+	dprintf("spawning thread to deal with add neighbour\n");
 	pthread_t add_neighbour_t;
 	pthread_create(&add_neighbour_t, NULL, add_neighbour_thread, (void *)input);
 }
 
 void handle_test_packet(struct packet *packet)
 {
-	printf("test packet received\n");
-	fflush(stdout);
-	printf("data length: %d\n", packet->header->length);
-	fflush(stdout);
-	printf("ip src: %s\n", inet_ntoa(packet->header->source_addr));
-	fflush(stdout);
-	printf("packet data:\n");
-	fflush(stdout);
-	printf("%s\n", (char*)packet->data);
-	fflush(stdout);
-	printf("done with data\n");
+	dprintf("test packet received\n");
+	dprintf("data length: %d\n", packet->header->length);
+	dprintf("ip src: %s\n", inet_ntoa(packet->header->source_addr));
+	dprintf("packet data:\n");
+	dprintf("%s\n", (char*)packet->data);
+	dprintf("done with data\n");
 }

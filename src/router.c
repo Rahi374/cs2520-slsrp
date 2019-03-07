@@ -81,6 +81,7 @@ void *listener_dispatch(void *s)
 	data = NULL;
 	if (has_data(&header)) {
 		data = malloc(header.length);
+		dprintf("reading %d bytes of data\n", header.length);
 		n = read_all_bytes_from_socket(sock, data, header.length);
 		if (n <= 0)
 			goto free_data;
