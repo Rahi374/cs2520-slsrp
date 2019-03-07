@@ -1,11 +1,13 @@
 #include <errno.h>
+#include <netinet/in.h>
+#include <net/if.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include <pthread.h>
 
 #include <arpa/inet.h>
@@ -23,7 +25,10 @@
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
 
-struct table *hm_alive;
+struct table *hm_alive;//TODO add mutex
+
+struct in_addr cur_router_id;
+int cur_router_port;
 
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads
@@ -137,13 +142,13 @@ void *listener_thread_func(void *ls)
 int main(int argc, char *argv[])
 {
 	int listen_sock;
-		
+	struct ifreq ifr;
+
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0) {
 		perror("Error making socket for listener");
 		return 1;
 	}
-
 	struct sockaddr_in sag;
 	memset(&sag, 0, sizeof(sag));
 	sag.sin_port = 0;
@@ -169,7 +174,14 @@ int main(int argc, char *argv[])
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
+	ifr.ifr_addr.sa_family = AF_INET;
+	strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+	ioctl(listen_sock, SIOCGIFADDR, &ifr);
+
+	cur_router_port = sag.sin_port;
+	cur_router_id.s_addr = ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 	printf("Router is set up and listening on port %d\n", sag.sin_port);
+	printf("Router is set up and listening on ip %s\n", inet_ntoa(cur_router_id));
 	fflush(stdout);
 
 	while (1)
