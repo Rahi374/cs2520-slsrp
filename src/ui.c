@@ -50,8 +50,69 @@ void add_neighbor()
 {
 	int counter;
 	char neighbor_id_to[16];
-	char neighbor_port_to[10];//not used yet, will need to readdress
+	char neighbor_port_to[10];
 
+	printf("Specify an ID to send a neighbor request to:\n");
+	scanf("%s", neighbor_id_to);
+	for(counter = 0; counter < 16; counter++){
+		if(neighbor_id_to[counter] == 0){
+			neighbor_id_to[counter] = '\0';
+			break;
+		}
+	}
+	neighbor_id_to[15] = '\0';
+	printf("Specify a port for that neighbor:\n");
+	scanf("%s", neighbor_port_to);
+	for(counter = 0; counter < 10; counter++){
+		if(neighbor_port_to[counter] == 0){
+			neighbor_port_to[counter] = '\0';
+			break;
+		}
+	}
+	neighbor_port_to[9] = '\0';
+	int neighbor_port_to_int = atoi(neighbor_port_to);
+
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = router_port;
+	sa.sin_addr.s_addr = inet_addr(router_ip);
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+	char *msg = "I am a msg of a different length";
+	//fill packet
+	struct packet_header pack_header;
+	pack_header.packet_type = UI_CONTROL_ADD_NEIGHBOUR;
+	pack_header.length = strlen(msg)+1;
+	inet_aton(router_ip, &pack_header.destination_addr);
+	pack_header.destination_port = router_port;
+	pack_header.source_addr = sa.sin_addr;
+	pack_header.source_port = sa.sin_port;
+	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
+	if (n < 0) {
+		perror("error in write to socket\n");
+		return;
+	}
+	//TODO read on the socket and wait for router to tell me success/fail and report that
+}
+
+
+
+void test_message()
+{
+	int counter;
+	char neighbor_id_to[16];
+	char neighbor_port_to[10];
 	printf("Specify an ID to send a neighbor request to:\n");
 	scanf("%s", neighbor_id_to);
 	for(counter = 0; counter < 16; counter++){
@@ -103,8 +164,8 @@ void add_neighbor()
 		perror("error in write to socket\n");
 		return;
 	}
-	//TODO read on the socket and wait for router to tell me success/fail and report that
 }
+
 
 void remove_neighbor()
 {
@@ -151,6 +212,9 @@ void process_input(char *input)
 {
 	int inp = atoi(input);
 	switch(inp){
+		case 0:
+			test_message();
+			break;
 		case 1:
 			add_neighbor();
 			break;
@@ -177,6 +241,7 @@ void start_repl()
 {
 	while(1){
 		printf("\nEnter a command:\n");
+		printf("	0 - Test Message\n");
 		printf("	1 - Add neighbor\n");
 		printf("	2 - Remove neighbor\n");
 		printf("	3 - Get Topology\n");
