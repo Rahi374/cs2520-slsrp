@@ -97,4 +97,5 @@ die:
 		inet_ntoa(n_router_full_id->neighbour_addr));
 free:
 	free(id);
+	close(sock);
 }
