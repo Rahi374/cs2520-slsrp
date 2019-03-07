@@ -1,6 +1,12 @@
 #ifndef _TOOLS_H
 #define _TOOLS_H
 
+#ifdef DEBUG
+#define dprintf(...) do { fprintf(stdout, __VA_ARGS__); fflush(stdout); } while (0)
+#else
+#define dprintf(...) do {} while (0)
+#endif
+
 struct packet_header;
 
 int has_data(struct packet_header *header);
