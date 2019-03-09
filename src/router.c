@@ -61,7 +61,10 @@ void *handle_packet(void *p)
 			break;
 	}
 
-	free(p);
+	free(packet->header);
+	if (packet->data)
+		free(packet->data);
+	free(packet);
 }
 
 // to deal with every new packet
