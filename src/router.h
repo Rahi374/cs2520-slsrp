@@ -54,9 +54,9 @@ struct packet {
 	int sock;
 };
 
-struct add_neighbour_command {
-	struct in_addr neighbour_addr;
-	unsigned int neighbour_port;
+struct full_addr {
+	struct in_addr addr;
+	unsigned int port;
 };
 
 struct neighbour {

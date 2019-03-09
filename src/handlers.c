@@ -177,14 +177,14 @@ void handle_alive_resp_packet(struct packet *packet)
 void handle_ui_control_add_neighbour(struct packet *packet)
 {
 	dprintf("received ui command to add neighbour!\n");
-	struct add_neighbour_command *input;
-	input = malloc(sizeof(struct add_neighbour_command));
+	struct full_addr *input;
+	input = malloc(sizeof(struct full_addr));
 	if (!input) {
 		dprintf("failed to allocate memory for add neighbour thread input\n");
 		return;
 	}
 	dprintf("memcpying\n");
-	memcpy(input, packet->data, sizeof(struct add_neighbour_command));
+	memcpy(input, packet->data, sizeof(struct full_addr));
 
 	dprintf("spawning thread to deal with add neighbour\n");
 	pthread_t add_neighbour_t;
