@@ -16,17 +16,16 @@ void *lc_thread(void *id)
 
 void *alive_thread(void *id)
 {
-	
 	dprintf("starting alive thread\n");
 	unsigned int n_router_id = *((unsigned int *)id);
-	while (1){
+	while (1) {
 		dprintf("alive thread proc\n");
 		pthread_mutex_lock(&mutex_hm_alive);
 		struct alive_control_struct *con_struct = (struct alive_control_struct*)lookup(hm_alive, n_router_id);
 		if (con_struct == 0)
 			printf("Error: did not find con_struct");
 		con_struct->pid_of_control_thread = getpid();
-		if (con_struct->num_unacked_messages > MAX_UNACKED_ALIVE_MESSAGES){
+		if (con_struct->num_unacked_messages > MAX_UNACKED_ALIVE_MESSAGES) {
 			delete(hm_alive, n_router_id); 
 			//TODO remove neighbor from neighbor list
 			free(id);
@@ -34,7 +33,7 @@ void *alive_thread(void *id)
 			printf("killing alive thread since num unacked too high\n");
 			fflush(stdout);
 			pthread_exit(0);
-		}else{
+		} else {
 			send_alive_msg(con_struct);				
 			con_struct->num_unacked_messages++;
 		}
