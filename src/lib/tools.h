@@ -19,4 +19,6 @@ int write_header_and_data(int sock, struct packet_header *header, void *data_poi
 
 int read_all_bytes_from_socket(int sock, void *dest, int num_bytes);
 
+int send_alive_msg(struct alive_control_struct *con_struct);
+
 #endif // _TOOLS_H

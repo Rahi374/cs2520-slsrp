@@ -47,7 +47,9 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// -> send response
 	memset(&resp, 0, sizeof(resp));
 	resp.source_addr.s_addr = packet->header->destination_addr.s_addr;
+	resp.source_port = packet->header->destination_port;
 	resp.destination_addr.s_addr = packet->header->source_addr.s_addr;
+	resp.destination_port = packet->header->source_port;
 	resp.packet_type = NEIGHBOR_REQ_RESP;
 	resp.length = 1;
 	resp.checksum_header = checksum_header(&resp);
@@ -69,6 +71,13 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
+
+	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
+	control_struct_alive->num_unacked_messages = 0;
+	control_struct_alive->n_addr = packet->header->source_addr;
+	control_struct_alive->n_port = packet->header->source_port;
+	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
@@ -106,9 +115,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 
 	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
-	control_struct_alive->mutex_alive_control_struct = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 	control_struct_alive->num_unacked_messages = 0;
-	control_struct_alive->pid_of_control_thread = getpid();
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
@@ -125,7 +132,25 @@ void handle_neighbour_resp_packet(struct packet *packet)
 
 void handle_alive_packet(struct packet *packet)
 {
-	printf("handle alive\n");
+	dprintf("handling alive packet\n");
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = packet->header->source_port;
+	sa.sin_addr.s_addr = packet->header->source_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+
 	struct packet_header resp;
 	memset(&resp, 0, sizeof(resp));
 	resp.source_addr = packet->header->destination_addr;
@@ -133,25 +158,26 @@ void handle_alive_packet(struct packet *packet)
 	resp.packet_type = ALIVE_RESP;
 	resp.length = 0;
 	resp.checksum_header = checksum_header(&resp);
-	write(packet->sock, &resp, sizeof(resp));
+	write(sock, &resp, sizeof(resp));
 }
 
 void handle_alive_resp_packet(struct packet *packet)
 {
-	printf("handle alive resp\n");
+	dprintf("handling alive response packet\n");
+	pthread_mutex_lock(&mutex_hm_alive);
 	struct alive_control_struct *con_struct = lookup(hm_alive, packet->header->source_addr.s_addr);
-	//TODO do we need to check ret val of this lookup?
-	pthread_mutex_lock(&con_struct->mutex_alive_control_struct);
+	if (!con_struct){
+		printf("Error, did not find that neighbor's control struct for alive resp packet\n");
+		return;
+	}
 	con_struct->num_unacked_messages = 0;
-	pthread_mutex_unlock(&con_struct->mutex_alive_control_struct);
+	pthread_mutex_unlock(&mutex_hm_alive);
 }
 
 void handle_ui_control_add_neighbour(struct packet *packet)
 {
-	struct add_neighbour_command *input;
-
 	dprintf("received ui command to add neighbour!\n");
-
+	struct add_neighbour_command *input;
 	input = malloc(sizeof(struct add_neighbour_command));
 	if (!input) {
 		dprintf("failed to allocate memory for add neighbour thread input\n");
@@ -173,4 +199,43 @@ void handle_test_packet(struct packet *packet)
 	dprintf("packet data:\n");
 	dprintf("%s\n", (char*)packet->data);
 	dprintf("done with data\n");
+}
+
+
+
+
+//TODO decide where to put helper functions for the handlers
+int send_alive_msg(struct alive_control_struct *con_struct)
+{
+
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return -1;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = con_struct->n_port;;
+	sa.sin_addr.s_addr = con_struct->n_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return -1;
+	}
+
+	struct packet_header alive_packet;
+	memset(&alive_packet, 0, sizeof(struct packet_header));
+	alive_packet.source_addr.s_addr = cur_router_id.s_addr;
+	alive_packet.source_port = cur_router_port;
+	alive_packet.destination_addr.s_addr = con_struct->n_addr.s_addr;;
+	alive_packet.destination_port = con_struct->n_port;
+	alive_packet.packet_type = ALIVE;
+	alive_packet.length = 0;
+	alive_packet.checksum_header = checksum_header(&alive_packet);
+
+	write(sock, &alive_packet, sizeof(struct packet_header));
+	return 0;
 }

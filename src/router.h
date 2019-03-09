@@ -12,6 +12,7 @@
 
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
+extern pthread_mutex_t mutex_hm_alive;
 extern struct table *hm_alive;
 
 extern struct in_addr cur_router_id;
@@ -65,7 +66,6 @@ struct neighbour {
 };
 
 struct alive_control_struct {
-	pthread_mutex_t mutex_alive_control_struct;
 	pid_t pid_of_control_thread;
 	int num_unacked_messages;
 	struct in_addr n_addr;

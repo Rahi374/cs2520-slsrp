@@ -25,7 +25,8 @@
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
 
-struct table *hm_alive;//TODO add mutex
+pthread_mutex_t mutex_hm_alive = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_alive;
 
 struct in_addr cur_router_id;
 int cur_router_port;
@@ -92,7 +93,7 @@ void *listener_dispatch(void *s)
 	packet->data = data;
 	packet->header = malloc(sizeof(header));
 	memcpy(packet->header, &header, sizeof(header));
-	packet->sock = sock;
+	packet->sock = sock;//TODO will this socket stay open when this thread dies?
 
 	// baton pass
 	pthread_t packet_handler_thread;
