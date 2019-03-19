@@ -12,6 +12,8 @@ int has_data(struct packet_header *header)
 	switch (header->packet_type) {
 		case TEST_PACKET:
 		case UI_CONTROL_ADD_NEIGHBOUR:
+		case LINK_COST:
+		case LINK_COST_RESP:
 			return 1;
 		default:
 			return 0;
