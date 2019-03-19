@@ -85,6 +85,18 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// spawn LCthread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
+
+	struct cost_control_struct *control_struct_cost = malloc(sizeof(struct cost_control_struct));
+	control_struct_cost->n_addr = packet->header->source_addr;
+	control_struct_cost->n_port = packet->header->source_port;
+	struct link_cost_record *lcr;
+	lcr = (struct link_cost_record*)malloc(sizeof(struct link_cost_record));
+	lcr->time_out.tv_nsec = -1;//marker of the stupid null node needed
+	lcr->time_in.tv_nsec = -1;
+	control_struct_cost->lcr_list = lcr;
+	INIT_LIST_HEAD((&control_struct_cost->lcr_list->list));
+	insert(hm_cost, packet->header->source_addr.s_addr, control_struct_cost);
+
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
 
@@ -126,6 +138,18 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	// spawn LCthread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
+
+	struct cost_control_struct *control_struct_cost = malloc(sizeof(struct cost_control_struct));
+	control_struct_cost->n_addr = packet->header->source_addr;
+	control_struct_cost->n_port = packet->header->source_port;
+	struct link_cost_record *lcr;
+	lcr = malloc(sizeof(struct link_cost_record));
+	lcr->time_out.tv_nsec = -1;//marker of the stupid null node needed
+	lcr->time_in.tv_nsec = -1;
+	control_struct_cost->lcr_list = lcr;
+	INIT_LIST_HEAD((&control_struct_cost->lcr_list->list));
+	insert(hm_cost, packet->header->source_addr.s_addr, control_struct_cost);
+
 	pthread_t lc_t;
 	pthread_create(&lc_t, NULL, lc_thread, (void *)neighbour_router_id);
 }
@@ -174,6 +198,66 @@ void handle_alive_resp_packet(struct packet *packet)
 	pthread_mutex_unlock(&mutex_hm_alive);
 }
 
+void handle_lc_packet(struct packet *packet)
+{
+	dprintf("handling lc packet\n");
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = packet->header->source_port;
+	sa.sin_addr.s_addr = packet->header->source_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in handle lc packet");
+		return;
+	}
+
+	struct packet_header lc_packet;
+	memset(&lc_packet, 0, sizeof(struct packet_header));
+	lc_packet.source_addr.s_addr = cur_router_id.s_addr;
+	lc_packet.source_port = cur_router_port;
+	lc_packet.destination_addr.s_addr = packet->header->source_addr.s_addr;
+	lc_packet.destination_port = packet->header->source_port;
+	lc_packet.packet_type = LINK_COST_RESP;
+	lc_packet.length = sizeof(struct timespec);
+	lc_packet.checksum_header = checksum_header(&lc_packet);
+	write_header_and_data(sock, &lc_packet, packet->data, sizeof(struct timespec));
+}
+
+void handle_lc_resp_packet(struct packet *packet)
+{
+	dprintf("handling lc resp packet\n");
+	struct link_cost_record *ptr;
+	struct timespec cur_time;
+	clock_gettime(CLOCK_MONOTONIC, &cur_time);
+	unsigned int n_router_id = packet->header->source_addr.s_addr;	
+	pthread_mutex_lock(&mutex_hm_cost);
+	struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);
+	if (con_struct == 0){
+		printf("Error: did not find cost con_struct");
+		fflush(stdout);
+		pthread_mutex_unlock(&mutex_hm_cost);
+		return;
+	}
+	struct timespec *timespec_sent_back = (struct timespec*)packet->data;
+	//TODO does the data and packet need freed?
+	list_for_each_entry(ptr, &(con_struct->lcr_list->list), list) {
+		if ((ptr->time_out.tv_nsec == timespec_sent_back->tv_nsec)&&(ptr->time_out.tv_sec == timespec_sent_back->tv_sec)) {
+			memcpy(&(ptr->time_in), &cur_time, sizeof(struct timespec));
+			break;
+		}
+	}
+	pthread_mutex_unlock(&mutex_hm_cost);
+	
+}
+
 void handle_ui_control_add_neighbour(struct packet *packet)
 {
 	dprintf("received ui command to add neighbour!\n");
@@ -204,38 +288,3 @@ void handle_test_packet(struct packet *packet)
 
 
 
-//TODO decide where to put helper functions for the handlers
-int send_alive_msg(struct alive_control_struct *con_struct)
-{
-
-	int sock = socket(AF_INET,SOCK_STREAM, 0);
-	if (sock < 0) {
-		perror("Error making socket\n");
-		return -1;
-	}
-
-	struct sockaddr_in sa;
-	memset(&sa, 0 ,sizeof(sa));
-	sa.sin_port = con_struct->n_port;;
-	sa.sin_addr.s_addr = con_struct->n_addr.s_addr;
-	sa.sin_family = AF_INET;
-
-	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
-	if (con < 0) {
-		perror("error on connect in writer");
-		return -1;
-	}
-
-	struct packet_header alive_packet;
-	memset(&alive_packet, 0, sizeof(struct packet_header));
-	alive_packet.source_addr.s_addr = cur_router_id.s_addr;
-	alive_packet.source_port = cur_router_port;
-	alive_packet.destination_addr.s_addr = con_struct->n_addr.s_addr;;
-	alive_packet.destination_port = con_struct->n_port;
-	alive_packet.packet_type = ALIVE;
-	alive_packet.length = 0;
-	alive_packet.checksum_header = checksum_header(&alive_packet);
-
-	write(sock, &alive_packet, sizeof(struct packet_header));
-	return 0;
-}

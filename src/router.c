@@ -28,6 +28,9 @@ struct neighbour *neighbours_list;
 pthread_mutex_t mutex_hm_alive = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_alive;
 
+pthread_mutex_t mutex_hm_cost = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_cost;
+
 struct in_addr cur_router_id;
 int cur_router_port;
 
@@ -50,6 +53,12 @@ void *handle_packet(void *p)
 			break;
 		case ALIVE_RESP:
 			handle_alive_resp_packet(packet);
+			break;
+		case LINK_COST:
+			handle_lc_packet(packet);
+			break;
+		case LINK_COST_RESP:
+			handle_lc_resp_packet(packet);
 			break;
 		case UI_CONTROL_ADD_NEIGHBOUR:
 			 handle_ui_control_add_neighbour(packet);
@@ -175,6 +184,10 @@ int main(int argc, char *argv[])
 	if (!hm_alive)
 		goto free_hm_alive;
 
+	hm_cost = createTable(100);
+	if (!hm_cost)
+		goto free_hm_cost;
+
 	// TODO spawn timer threads
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
@@ -191,13 +204,12 @@ int main(int argc, char *argv[])
 
 	while (1)
 		usleep(10000000);
-
-	pthread_mutex_lock(&mutex_neighbours_list);
-free_n:
-	free(neighbours_list);
-	pthread_mutex_unlock(&mutex_neighbours_list);
+free_hm_cost:	
+	destroyTable(hm_alive);
 free_hm_alive:
-	free(hm_alive);
+	free(neighbours_list);
+free_n:
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	return 0;
 }

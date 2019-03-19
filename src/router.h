@@ -14,6 +14,8 @@ extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
 extern pthread_mutex_t mutex_hm_alive;
 extern struct table *hm_alive;
+extern pthread_mutex_t mutex_hm_cost;
+extern struct table *hm_cost;
 
 extern struct in_addr cur_router_id;
 extern int cur_router_port;
@@ -27,6 +29,7 @@ enum packet_type {
 	ALIVE,
 	ALIVE_RESP,
 	LINK_COST,
+	LINK_COST_RESP,
 	LINK_DOWN,
 	UI_CONTROL_ADD_NEIGHBOUR,
 	UI_CONTROL_KILL_NEIGHBOUR,
@@ -70,6 +73,20 @@ struct alive_control_struct {
 	int num_unacked_messages;
 	struct in_addr n_addr;
 	int n_port;
+};
+
+struct link_cost_record {
+	struct timespec time_out;
+	struct timespec time_in;
+	struct list_head list;
+};
+
+struct cost_control_struct {
+	pid_t pid_of_control_thread;
+	struct in_addr n_addr;
+	int n_port;
+	struct link_cost_record *lcr_list;
+	long link_avg_nsec;
 };
 
 #endif // _ROUTER_DEFS_
