@@ -107,3 +107,20 @@ free:
 	free(id);
 	close(sock);
 }
+
+void *lsa_sending_thread(void *id)
+{
+	/*
+	struct lsa_control_struct *con_struct = (struct lsa_control_struct *)id;
+
+	dprintf("starting lsa sending thread for router id %s\n",
+		inet_ntoa(addr));
+
+	// alloc lsa sending table for num of neighbours
+	struct lsa_control_struct *control_struct_lsa = malloc(sizeof(struct lsa_control_struct));
+
+	// loop through lsa sending table, populate nid and send lsa and populate s
+
+	free(con_struct);
+	*/
+}
