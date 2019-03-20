@@ -45,7 +45,7 @@ void *alive_thread(void *id)
 
 void *add_neighbour_thread(void *id)
 {
-	printf("starting neighbour thread\n");
+	dprintf("starting neighbour thread\n");
 
 	struct full_addr *n_router_full_id = (struct full_addr *)id;
 	struct neighbour *ptr;
