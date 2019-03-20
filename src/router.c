@@ -55,6 +55,9 @@ void *handle_packet(void *p)
 		case ALIVE_RESP:
 			handle_alive_resp_packet(packet);
 			break;
+		case LSA:
+			handle_lsa_packet(packet);
+			break;
 		case UI_CONTROL_ADD_NEIGHBOUR:
 			 handle_ui_control_add_neighbour(packet);
 			 break;
