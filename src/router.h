@@ -29,6 +29,7 @@ enum packet_type {
 	NEIGHBOR_REQ,
 	NEIGHBOR_REQ_RESP,
 	LSA,
+	LSA_ACK,
 	ALIVE,
 	ALIVE_RESP,
 	LINK_COST,
