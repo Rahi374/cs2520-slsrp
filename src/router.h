@@ -19,6 +19,7 @@ extern struct table *hm_alive;
 
 extern pthread_mutex_t mutex_hm_lsa;
 extern struct table *hm_lsa;
+extern int lsa_count;
 
 extern struct in_addr cur_router_id;
 extern int cur_router_port;
@@ -43,6 +44,8 @@ enum packet_type {
 // depending on the packet type, the length might simply contain the data
 // NEIGHBOR_REQ - no data
 // NEIGHBOR_REQ_RESP - 0 for negative, 1 for affirmative
+// LSA - LSA data
+// LSA_ACK - type long, sequence number
 struct packet_header {
 	struct in_addr source_addr;
 	unsigned int source_port;

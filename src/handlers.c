@@ -247,6 +247,43 @@ send_ack:
 	send_lsa_ack(&ack, &con_struct->origin_neighbour);
 }
 
+void handle_lsa_ack_packet(struct packet *packet)
+{
+	struct lsa_control_struct *con_struct;
+	struct lsa_ack *ack = packet->data;
+	int i;
+
+	// get control struct for the router id
+	pthread_mutex_lock(&mutex_hm_lsa);
+	con_struct = lookup(hm_lsa, ack->router.s_addr);
+	pthread_mutex_unlock(&mutex_hm_lsa);
+
+	if (!con_struct) {
+		printf("WARNING received ack for lsa that we didn't send\n");
+		fflush(stdout);
+		return;
+	}
+
+	// compare seq num
+	pthread_mutex_lock(&con_struct->lock);
+	if (con_struct->lsa->seq != ack->seq) {
+		pthread_mutex_unlock(&con_struct->lock);
+		return;
+	}
+	pthread_mutex_unlock(&con_struct->lock);
+
+	// find the entry in the sending list and set a
+	pthread_mutex_lock(&con_struct->lock);
+	for (i = 0; i < con_struct->nentries; i++) {
+		if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
+		    ack->router_id) {
+			con_struct->lsa_sending_list[i].a = 1;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&con_struct->lock);
+}
+
 void handle_ui_control_add_neighbour(struct packet *packet)
 {
 	dprintf("received ui command to add neighbour!\n");
