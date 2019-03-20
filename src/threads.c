@@ -45,7 +45,7 @@ void *alive_thread(void *id)
 
 void *add_neighbour_thread(void *id)
 {
-	printf("starting neighbour thread\n");
+	dprintf("starting neighbour thread\n");
 
 	struct full_addr *n_router_full_id = (struct full_addr *)id;
 	struct neighbour *ptr;
@@ -110,17 +110,61 @@ free:
 
 void *lsa_sending_thread(void *id)
 {
-	/*
 	struct lsa_control_struct *con_struct = (struct lsa_control_struct *)id;
+	struct lsa *last_lsa;
+	int i, n;
 
 	dprintf("starting lsa sending thread for router id %s\n",
-		inet_ntoa(addr));
+		inet_ntoa(con_struct->router_id->addr));
 
-	// alloc lsa sending table for num of neighbours
-	struct lsa_control_struct *control_struct_lsa = malloc(sizeof(struct lsa_control_struct));
+	pthread_mutex_lock(&con_struct->lock);
+	con_struct->pid_of_control_thread = getpid();
+	last_lsa = con_struct->lsa;
+	n = con_struct->nentries;
+	pthread_mutex_unlock(&con_struct->lock);
 
-	// loop through lsa sending table, populate nid and send lsa and populate s
+	while (1) {
+		// loop through lsa sending table, send lsa and populate s
+		for (i = 0; i < n; i++) {
+			pthread_mutex_lock(&con_struct->lock);
 
-	free(con_struct);
-	*/
+			if (last_lsa != con_struct->lsa) {
+				last_lsa = con_struct->lsa;
+				i = 0;
+			}
+
+			if (con_struct->lsa_sending_list[i].a) {
+				pthread_mutex_unlock(&con_struct->lock);
+				continue;
+			}
+
+			// skip if this neighbour sent us the lsa
+			if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
+			    con_struct->origin_neighbour->addr.s_addr) {
+				pthread_mutex_unlock(&con_struct->lock);
+				continue;
+			}
+
+			send_lsa(last_lsa, &con_struct->lsa_sending_list[i].addr);
+			con_struct->lsa_sending_list[i].s = 1;
+
+			// hope this doesn't hit the edge case
+			n = con_struct->nentries;
+			pthread_mutex_unlock(&con_struct->lock);
+
+			usleep(1000000);
+		}
+
+		// TODO get this from config?
+		usleep(3000000);
+	}
+}
+
+void *lsa_generating_thread(void *id)
+{
+	// malloc lsa and lsa entry list
+
+	// get link costs, populate lsa
+
+	// assemble the lsa, spawn lsa sending thread (see handle_lsa_packet())
 }

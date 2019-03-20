@@ -11,6 +11,7 @@ int has_data(struct packet_header *header)
 	// TODO
 	switch (header->packet_type) {
 		case LSA:
+		case LSA_ACK:
 		case TEST_PACKET:
 		case UI_CONTROL_ADD_NEIGHBOUR:
 			return 1;

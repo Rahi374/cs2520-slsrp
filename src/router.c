@@ -31,6 +31,7 @@ struct table *hm_alive;
 
 pthread_mutex_t mutex_hm_lsa = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_lsa;
+int lsa_count = 0;
 
 struct in_addr cur_router_id;
 int cur_router_port;
@@ -57,6 +58,9 @@ void *handle_packet(void *p)
 			break;
 		case LSA:
 			handle_lsa_packet(packet);
+			break;
+		case LSA_ACK:
+			handle_lsa_ack_packet(packet);
 			break;
 		case UI_CONTROL_ADD_NEIGHBOUR:
 			 handle_ui_control_add_neighbour(packet);
