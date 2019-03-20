@@ -65,6 +65,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
+	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	dprintf("spawning alive thread\n");
@@ -108,6 +109,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
+	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread

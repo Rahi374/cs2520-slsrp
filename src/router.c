@@ -24,6 +24,7 @@
 
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
+int neighbour_count = 0;
 
 pthread_mutex_t mutex_hm_alive = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_alive;

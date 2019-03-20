@@ -12,6 +12,8 @@
 
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
+extern int neighbour_count;
+
 extern pthread_mutex_t mutex_hm_alive;
 extern struct table *hm_alive;
 
