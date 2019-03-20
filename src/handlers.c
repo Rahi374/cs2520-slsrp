@@ -8,6 +8,7 @@
 
 #include "hm.h"
 #include "handlers.h"
+#include "lsa.h"
 #include "router.h"
 #include "threads.h"
 #include "tools.h"
@@ -65,6 +66,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
+	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	dprintf("spawning alive thread\n");
@@ -76,7 +78,9 @@ void handle_neighbour_req_packet(struct packet *packet)
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+	pthread_mutex_unlock(&mutex_hm_alive);
 
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
@@ -120,6 +124,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
+	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// spawn AliveThread
@@ -130,7 +135,9 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+	pthread_mutex_unlock(&mutex_hm_alive);
 
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
@@ -255,7 +262,109 @@ void handle_lc_resp_packet(struct packet *packet)
 		}
 	}
 	pthread_mutex_unlock(&mutex_hm_cost);
+}
 	
+void handle_lsa_packet(struct packet *packet)
+{
+	struct lsa_control_struct *con_struct;
+	struct lsa *lsa_tmp = extract_lsa(packet);
+	struct lsa *lsa;
+	struct lsa_ack ack;
+
+	lsa = copy_lsa(lsa_tmp);
+	// TODO config?
+	lsa->age = 3;
+
+	// if thread already exists for router, replace lsa and lsa sending list
+	pthread_mutex_lock(&mutex_hm_lsa);
+	con_struct = lookup(hm_lsa, lsa->router_id.addr.s_addr);
+	pthread_mutex_unlock(&mutex_hm_lsa);
+	if (con_struct) {
+		pthread_mutex_lock(&con_struct->lock);
+
+		if (!lsa_is_valid(lsa, con_struct->lsa)) {
+			pthread_mutex_unlock(&con_struct->lock);
+			free_lsa(lsa);
+			return;
+		}
+
+		free_lsa(con_struct->lsa);
+		con_struct->lsa = lsa;
+		realloc_lsa_sending_list(con_struct->lsa_sending_list,
+					 neighbour_count);
+		con_struct->nentries = neighbour_count;
+		populate_lsa_sending_list_neighbours(con_struct);
+		pthread_mutex_unlock(&con_struct->lock);
+		goto send_ack;
+	}
+
+	// otherwise allocate and spawn lsa_sending_thread
+	con_struct = malloc(sizeof(struct lsa_control_struct));
+	pthread_mutex_init(&con_struct->lock, NULL);
+	con_struct->router_id.addr.s_addr = lsa->router_id.addr.s_addr;
+	con_struct->router_id.port = lsa->router_id.port;
+	con_struct->lsa = lsa;
+	pthread_mutex_lock(&mutex_neighbours_list);
+	con_struct->nentries = neighbour_count;
+	pthread_mutex_unlock(&mutex_neighbours_list);
+	con_struct->lsa_sending_list = calloc(con_struct->nentries,
+					      sizeof(struct lsa_sending_entry));
+	populate_lsa_sending_list_neighbours(con_struct);
+
+	// need to save which neighbour gave us the lsa so we don't send it to them
+	con_struct->origin_neighbour.addr.s_addr = packet->header->source_addr.s_addr;
+	con_struct->origin_neighbour.port = packet->header->source_port;
+
+	pthread_mutex_lock(&mutex_hm_lsa);
+	insert(hm_lsa, lsa->router_id.addr.s_addr, con_struct);
+	lsa_count++;
+	pthread_mutex_unlock(&mutex_hm_lsa);
+
+	pthread_t lsa_sending_t;
+	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
+
+send_ack:
+	ack.router_id = lsa->router_id.addr.s_addr;
+	ack.seq = lsa->seq;
+	// this will fail only if a neighbour's death is handled at this moment
+	send_lsa_ack(&ack, &con_struct->origin_neighbour);
+}
+
+void handle_lsa_ack_packet(struct packet *packet)
+{
+	struct lsa_control_struct *con_struct;
+	struct lsa_ack *ack = packet->data;
+	int i;
+
+	// get control struct for the router id
+	pthread_mutex_lock(&mutex_hm_lsa);
+	con_struct = lookup(hm_lsa, ack->router.s_addr);
+	pthread_mutex_unlock(&mutex_hm_lsa);
+
+	if (!con_struct) {
+		printf("WARNING received ack for lsa that we didn't send\n");
+		fflush(stdout);
+		return;
+	}
+
+	// compare seq num
+	pthread_mutex_lock(&con_struct->lock);
+	if (con_struct->lsa->seq != ack->seq) {
+		pthread_mutex_unlock(&con_struct->lock);
+		return;
+	}
+	pthread_mutex_unlock(&con_struct->lock);
+
+	// find the entry in the sending list and set a
+	pthread_mutex_lock(&con_struct->lock);
+	for (i = 0; i < con_struct->nentries; i++) {
+		if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
+		    ack->router_id) {
+			con_struct->lsa_sending_list[i].a = 1;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&con_struct->lock);
 }
 
 void handle_ui_control_add_neighbour(struct packet *packet)

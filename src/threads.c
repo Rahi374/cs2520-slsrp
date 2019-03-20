@@ -172,16 +172,18 @@ void *alive_thread(void *id)
 	pthread_mutex_unlock(&mutex_hm_alive);
 
 	while (1) {
-		//dprintf("alive thread proc\n");
+		dprintf("alive thread proc\n");
+
 		pthread_mutex_lock(&mutex_hm_alive);
 		struct alive_control_struct *con_struct = (struct alive_control_struct*)lookup(hm_alive, n_router_id);
-		if (con_struct == 0){
+		if (con_struct == 0) {
 			printf("Error: did not find alive con_struct");
 			fflush(stdout);
 			pthread_mutex_unlock(&mutex_hm_alive);
 			return (void*)0;
 		}
 		con_struct->pid_of_control_thread = getpid();
+
 		if (con_struct->num_unacked_messages > MAX_UNACKED_ALIVE_MESSAGES) {
 			delete(hm_alive, n_router_id); 
 			//TODO remove neighbor from neighbor list and kill neighbor in other things
@@ -202,7 +204,7 @@ void *alive_thread(void *id)
 
 void *add_neighbour_thread(void *id)
 {
-	printf("starting neighbour thread\n");
+	dprintf("starting neighbour thread\n");
 
 	struct full_addr *n_router_full_id = (struct full_addr *)id;
 	struct neighbour *ptr;
@@ -263,4 +265,65 @@ die:
 free:
 	free(id);
 	close(sock);
+}
+
+void *lsa_sending_thread(void *id)
+{
+	struct lsa_control_struct *con_struct = (struct lsa_control_struct *)id;
+	struct lsa *last_lsa;
+	int i, n;
+
+	dprintf("starting lsa sending thread for router id %s\n",
+		inet_ntoa(con_struct->router_id->addr));
+
+	pthread_mutex_lock(&con_struct->lock);
+	con_struct->pid_of_control_thread = getpid();
+	last_lsa = con_struct->lsa;
+	n = con_struct->nentries;
+	pthread_mutex_unlock(&con_struct->lock);
+
+	while (1) {
+		// loop through lsa sending table, send lsa and populate s
+		for (i = 0; i < n; i++) {
+			pthread_mutex_lock(&con_struct->lock);
+
+			if (last_lsa != con_struct->lsa) {
+				last_lsa = con_struct->lsa;
+				i = 0;
+			}
+
+			if (con_struct->lsa_sending_list[i].a) {
+				pthread_mutex_unlock(&con_struct->lock);
+				continue;
+			}
+
+			// skip if this neighbour sent us the lsa
+			if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
+			    con_struct->origin_neighbour->addr.s_addr) {
+				pthread_mutex_unlock(&con_struct->lock);
+				continue;
+			}
+
+			send_lsa(last_lsa, &con_struct->lsa_sending_list[i].addr);
+			con_struct->lsa_sending_list[i].s = 1;
+
+			// hope this doesn't hit the edge case
+			n = con_struct->nentries;
+			pthread_mutex_unlock(&con_struct->lock);
+
+			usleep(1000000);
+		}
+
+		// TODO get this from config?
+		usleep(3000000);
+	}
+}
+
+void *lsa_generating_thread(void *id)
+{
+	// malloc lsa and lsa entry list
+
+	// get link costs, populate lsa
+
+	// assemble the lsa, spawn lsa sending thread (see handle_lsa_packet())
 }
