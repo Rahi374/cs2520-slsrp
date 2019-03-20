@@ -17,6 +17,9 @@ extern int neighbour_count;
 extern pthread_mutex_t mutex_hm_alive;
 extern struct table *hm_alive;
 
+extern pthread_mutex_t mutex_hm_lsa;
+extern struct table *hm_lsa;
+
 extern struct in_addr cur_router_id;
 extern int cur_router_port;
 

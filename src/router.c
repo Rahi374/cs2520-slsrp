@@ -29,6 +29,9 @@ int neighbour_count = 0;
 pthread_mutex_t mutex_hm_alive = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_alive;
 
+pthread_mutex_t mutex_hm_lsa = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_lsa;
+
 struct in_addr cur_router_id;
 int cur_router_port;
 
@@ -175,6 +178,13 @@ int main(int argc, char *argv[])
 	hm_alive = createTable(100);
 	if (!hm_alive)
 		goto free_hm_alive;
+
+	hm_lsa = createTable(100);
+	/* TODO
+	if (!hm_alive)
+		goto free_hm_alive;
+	*/
+
 
 	// TODO spawn timer threads
 	pthread_t listener_thread;
