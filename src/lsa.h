@@ -31,6 +31,7 @@ struct lsa_control_struct {
 	pid_t pid_of_control_thread;
 	pthread_mutex_t lock;
 	struct full_addr router_id;
+	struct full_addr origin_neighbour;
 	struct lsa *lsa;
 	struct lsa_sending_entry *lsa_sending_list;
 	int nentries;
