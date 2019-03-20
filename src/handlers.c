@@ -77,7 +77,9 @@ void handle_neighbour_req_packet(struct packet *packet)
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+	pthread_mutex_unlock(&mutex_hm_alive);
 
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
@@ -120,7 +122,9 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
+	pthread_mutex_unlock(&mutex_hm_alive);
 
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
