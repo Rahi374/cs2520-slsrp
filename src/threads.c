@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "hm.h"
+#include "lsa.h"
 #include "router.h"
 #include "tools.h"
 
@@ -274,7 +275,7 @@ void *lsa_sending_thread(void *id)
 	int i, n;
 
 	dprintf("starting lsa sending thread for router id %s\n",
-		inet_ntoa(con_struct->router_id->addr));
+		inet_ntoa(con_struct->router_id.addr));
 
 	pthread_mutex_lock(&con_struct->lock);
 	con_struct->pid_of_control_thread = getpid();
@@ -299,7 +300,7 @@ void *lsa_sending_thread(void *id)
 
 			// skip if this neighbour sent us the lsa
 			if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
-			    con_struct->origin_neighbour->addr.s_addr) {
+			    con_struct->origin_neighbour.addr.s_addr) {
 				pthread_mutex_unlock(&con_struct->lock);
 				continue;
 			}
@@ -311,8 +312,15 @@ void *lsa_sending_thread(void *id)
 			n = con_struct->nentries;
 			pthread_mutex_unlock(&con_struct->lock);
 
+			if (--last_lsa->age < 0)
+				last_lsa->seq = 0;
+
 			usleep(1000000);
 		}
+
+		pthread_mutex_lock(&con_struct->lock);
+		n = con_struct->nentries;
+		pthread_mutex_unlock(&con_struct->lock);
 
 		// TODO get this from config?
 		usleep(3000000);

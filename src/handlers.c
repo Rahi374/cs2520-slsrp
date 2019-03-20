@@ -273,7 +273,7 @@ void handle_lsa_packet(struct packet *packet)
 
 	lsa = copy_lsa(lsa_tmp);
 	// TODO config?
-	lsa->age = 3;
+	lsa->age = 20;
 
 	// if thread already exists for router, replace lsa and lsa sending list
 	pthread_mutex_lock(&mutex_hm_lsa);
@@ -282,11 +282,21 @@ void handle_lsa_packet(struct packet *packet)
 	if (con_struct) {
 		pthread_mutex_lock(&con_struct->lock);
 
+		// validate lsa (based on seq)
 		if (!lsa_is_valid(lsa, con_struct->lsa)) {
+			// still have to ack
+			ack.router_id.s_addr = lsa->router_id.addr.s_addr;
+			ack.seq = lsa->seq;
+			// this will fail only if a neighbour's death is handled at this moment
+			send_lsa_ack(&ack, &con_struct->origin_neighbour);
 			pthread_mutex_unlock(&con_struct->lock);
 			free_lsa(lsa);
 			return;
 		}
+
+		// need to save which neighbour gave us the lsa so we don't send it to them
+		con_struct->origin_neighbour.addr.s_addr = packet->header->source_addr.s_addr;
+		con_struct->origin_neighbour.port = packet->header->source_port;
 
 		free_lsa(con_struct->lsa);
 		con_struct->lsa = lsa;
@@ -324,7 +334,7 @@ void handle_lsa_packet(struct packet *packet)
 	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
 
 send_ack:
-	ack.router_id = lsa->router_id.addr.s_addr;
+	ack.router_id.s_addr = lsa->router_id.addr.s_addr;
 	ack.seq = lsa->seq;
 	// this will fail only if a neighbour's death is handled at this moment
 	send_lsa_ack(&ack, &con_struct->origin_neighbour);
@@ -338,7 +348,7 @@ void handle_lsa_ack_packet(struct packet *packet)
 
 	// get control struct for the router id
 	pthread_mutex_lock(&mutex_hm_lsa);
-	con_struct = lookup(hm_lsa, ack->router.s_addr);
+	con_struct = lookup(hm_lsa, ack->router_id.s_addr);
 	pthread_mutex_unlock(&mutex_hm_lsa);
 
 	if (!con_struct) {
@@ -359,7 +369,7 @@ void handle_lsa_ack_packet(struct packet *packet)
 	pthread_mutex_lock(&con_struct->lock);
 	for (i = 0; i < con_struct->nentries; i++) {
 		if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
-		    ack->router_id) {
+		    ack->router_id.s_addr) {
 			con_struct->lsa_sending_list[i].a = 1;
 			break;
 		}

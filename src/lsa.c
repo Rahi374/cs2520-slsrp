@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -11,9 +12,6 @@
 int lsa_is_valid(struct lsa *new_lsa, struct lsa *old_lsa)
 {
 	if (new_lsa->seq > old_lsa->seq)
-		return 1;
-
-	if (--old_lsa->age <= 0)
 		return 1;
 
 	return 0;
@@ -62,6 +60,7 @@ realloc_lsa_sending_list(struct lsa_sending_entry *lsa_sending_list, int n)
 
 void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct)
 {
+	struct neighbour *ptr;
 	int i;
 
 	pthread_mutex_lock(&con_struct->lock);
@@ -155,9 +154,8 @@ int send_lsa_ack(struct lsa_ack *ack, struct full_addr *addr)
 	header.length = sizeof(struct lsa_ack);
 	header.checksum_header = checksum_header(&header);
 
-	write_header_and_data(sock, &header, lsa_ack, sizeof(struct lsa_ack));
+	write_header_and_data(sock, &header, ack, sizeof(struct lsa_ack));
 
-	free(data);
 	return 0;
 
 }
