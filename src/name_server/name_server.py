@@ -47,12 +47,18 @@ class RemoveRouter(Resource):
         except:
             return "0"
 
+class FlushAll(Resource):
+    def get(self):
+        print("deleting all info")
+        addr_to_info.clear()
+        name_to_info.clear()
+
 
 api.add_resource(GetInfoByAddress, '/addr/<string:address>')
 api.add_resource(GetInfoByName, '/name/<string:name>')
 api.add_resource(PostInfoForRouter, '/add/<string:name>/<string:addr>/<string:port>')
 api.add_resource(RemoveRouter, '/remove/<string:addr>')
-
+api.add_resource(FlushAll,'/flush/')
 
 if __name__ == '__main__':
     app.run(debug=True)

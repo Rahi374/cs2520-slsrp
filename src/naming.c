@@ -2,10 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+/*
+#define NAME_SERVER_NAME "http://amanokami.net:5000/name/"
+#define NAME_SERVER_ADD "http://amanokami.net:5000/add/"
+*/
 #define NAME_SERVER_NAME "http://127.0.0.1:5000/name/"
 #define NAME_SERVER_ADD "http://127.0.0.1:5000/add/"
-
 
 size_t dataSize=0;
 size_t curlWriteFunction(void* ptr, size_t size, size_t nmemb, void* userdata)
