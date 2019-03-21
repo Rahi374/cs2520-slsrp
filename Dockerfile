@@ -1,6 +1,6 @@
 FROM alpine:3.9
 
-RUN apk update && apk add gcc make musl-dev libc-dev
+RUN apk update && apk add gcc make musl-dev libc-dev curl-dev
 
 #EXPOSE 50500
 
