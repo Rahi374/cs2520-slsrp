@@ -38,6 +38,7 @@ int write_header_and_data(int sock, struct packet_header *header, void *data_poi
 {
 	int pack_size = sizeof(struct packet_header) + data_size;
 	void *pack = malloc(pack_size);
+	memset(pack, 0, pack_size);
 	concat_header_and_data(pack, header, data_pointer, data_size);
 	int n = write(sock, pack, pack_size);
 	free(pack);
