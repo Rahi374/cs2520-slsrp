@@ -69,30 +69,29 @@ void free_lsa(struct lsa *lsa)
 struct lsa_sending_entry *
 realloc_lsa_sending_list(struct lsa_sending_entry *lsa_sending_list, int n)
 {
-	lsa_sending_list = realloc(lsa_sending_list,
-				   n * sizeof(struct lsa_sending_entry));
+	if (lsa_sending_list)
+		free(lsa_sending_list);
+	lsa_sending_list = calloc(n, sizeof(struct lsa_sending_entry));
 	memset(lsa_sending_list, 0, n * sizeof(struct lsa_sending_entry));
 
 	return lsa_sending_list;
 }
 
-void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct)
+void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct, int n)
 {
 	struct neighbour *ptr;
 	int i;
 
-	pthread_mutex_lock(&con_struct->lock);
-	pthread_mutex_lock(&mutex_neighbours_list);
 	i = 0;
 	list_for_each_entry(ptr, &neighbours_list->list, list) {
-		if (i >= con_struct->nentries)
+		if (i >= n)
 			break;
 		con_struct->lsa_sending_list[i].addr.addr.s_addr = ptr->id.s_addr;
+		con_struct->lsa_sending_list[i].addr.port = ptr->port;
 		con_struct->lsa_sending_list[i].s = 0;
 		con_struct->lsa_sending_list[i].a = 0;
+		i++;
 	}
-	pthread_mutex_unlock(&mutex_neighbours_list);
-	pthread_mutex_unlock(&con_struct->lock);
 }
 
 int send_lsa(struct lsa *lsa, struct full_addr *addr)

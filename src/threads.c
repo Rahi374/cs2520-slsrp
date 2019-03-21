@@ -238,8 +238,10 @@ void *add_neighbour_thread(void *id)
 		// if not in neighbours list
 		pthread_mutex_lock(&mutex_neighbours_list);
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
-			if (ptr->id.s_addr == n_router_full_id->addr.s_addr)
+			if (ptr->id.s_addr == n_router_full_id->addr.s_addr) {
+				pthread_mutex_unlock(&mutex_neighbours_list);
 				goto free;
+			}
 		}
 		pthread_mutex_unlock(&mutex_neighbours_list);
 
@@ -290,7 +292,9 @@ void *lsa_sending_thread(void *id)
 
 			if (last_lsa != con_struct->lsa) {
 				last_lsa = con_struct->lsa;
-				i = 0;
+				i = -1;
+				pthread_mutex_unlock(&con_struct->lock);
+				continue;
 			}
 
 			if (con_struct->lsa_sending_list[i].a) {
@@ -310,20 +314,20 @@ void *lsa_sending_thread(void *id)
 
 			// hope this doesn't hit the edge case
 			n = con_struct->nentries;
-			pthread_mutex_unlock(&con_struct->lock);
 
 			if (--last_lsa->age < 0)
 				last_lsa->seq = 0;
+			pthread_mutex_unlock(&con_struct->lock);
 
 			usleep(1000000);
 		}
 
+		// TODO get this from config?
+		usleep(3000000);
+
 		pthread_mutex_lock(&con_struct->lock);
 		n = con_struct->nentries;
 		pthread_mutex_unlock(&con_struct->lock);
-
-		// TODO get this from config?
-		usleep(3000000);
 	}
 }
 
@@ -339,17 +343,17 @@ void *lsa_generating_thread(void *id)
 
 	usleep(3000000);
 
-	// otherwise allocate and spawn lsa_sending_thread
+	// allocate and spawn lsa_sending_thread
 	con_struct = malloc(sizeof(struct lsa_control_struct));
 	pthread_mutex_init(&con_struct->lock, NULL);
 	con_struct->router_id.addr.s_addr = cur_router_id.s_addr;
 	con_struct->router_id.port = cur_router_port;
 	pthread_mutex_lock(&mutex_neighbours_list);
 	con_struct->nentries = neighbour_count;
-	pthread_mutex_unlock(&mutex_neighbours_list);
-	con_struct->lsa_sending_list = calloc(con_struct->nentries,
+	con_struct->lsa_sending_list = calloc(neighbour_count,
 					      sizeof(struct lsa_sending_entry));
-	populate_lsa_sending_list_neighbours(con_struct);
+	populate_lsa_sending_list_neighbours(con_struct, neighbour_count);
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	pthread_mutex_lock(&mutex_hm_lsa);
 	insert(hm_lsa, cur_router_id.s_addr, con_struct);
@@ -363,8 +367,6 @@ void *lsa_generating_thread(void *id)
 		pthread_mutex_lock(&mutex_neighbours_list);
 		pthread_mutex_lock(&mutex_hm_cost);
 
-		// TODO con_struct->lsa = lsa;
-
 		new_lsa = malloc(sizeof(struct lsa));
 		new_lsa_entry_list = calloc(neighbour_count, sizeof(struct lsa_entry));
 		new_lsa->lsa_entry_list = new_lsa_entry_list;
@@ -373,6 +375,8 @@ void *lsa_generating_thread(void *id)
 		// get link costs, populate lsa
 		i = 0;
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
+			if (i >= new_lsa->nentries)
+				break;
 			cost = ((struct cost_control_struct *)lookup(hm_cost, ptr->id.s_addr))->link_avg_nsec;
 			new_lsa->lsa_entry_list[i].neighbour_id.addr.s_addr = ptr->id.s_addr;
 			new_lsa->lsa_entry_list[i].neighbour_id.port = ptr->port;
@@ -384,19 +388,29 @@ void *lsa_generating_thread(void *id)
 		new_lsa->router_id.port = cur_router_port;
 
 		clock_gettime(CLOCK_MONOTONIC, &cur_time);
-		new_lsa->seq = cur_time.tv_nsec + 1000000 * cur_time.tv_sec;
+		new_lsa->seq = cur_time.tv_nsec + 1000000000 * cur_time.tv_sec;
 
 		// give lsa to sending thread
 		pthread_mutex_lock(&con_struct->lock);
 		if (con_struct->lsa)
 			free_lsa(con_struct->lsa);
 		con_struct->lsa = new_lsa;
+		con_struct->nentries = neighbour_count;
+		if (con_struct->lsa_sending_list)
+			con_struct->lsa_sending_list =
+				realloc_lsa_sending_list(con_struct->lsa_sending_list,
+							 neighbour_count);
+		else
+			con_struct->lsa_sending_list = calloc(neighbour_count,
+					sizeof(struct lsa_sending_entry));
+
+		populate_lsa_sending_list_neighbours(con_struct, neighbour_count);
 		pthread_mutex_unlock(&con_struct->lock);
 
 		pthread_mutex_unlock(&mutex_hm_cost);
 		pthread_mutex_unlock(&mutex_neighbours_list);
 
 		// TODO config?
-		usleep(3000000);
+		usleep(10000000);
 	}
 }
