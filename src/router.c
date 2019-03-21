@@ -64,6 +64,7 @@ void *handle_packet(void *p)
 			break;
 		case LINK_COST_RESP:
 			handle_lc_resp_packet(packet);
+			break;
 		case LSA:
 			handle_lsa_packet(packet);
 			break;
