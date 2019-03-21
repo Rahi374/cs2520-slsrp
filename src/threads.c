@@ -388,7 +388,8 @@ void *lsa_generating_thread(void *id)
 
 		// give lsa to sending thread
 		pthread_mutex_lock(&con_struct->lock);
-		free_lsa(con_struct->lsa);
+		if (con_struct->lsa)
+			free_lsa(con_struct->lsa);
 		con_struct->lsa = new_lsa;
 		pthread_mutex_unlock(&con_struct->lock);
 
