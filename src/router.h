@@ -23,6 +23,9 @@ extern pthread_mutex_t mutex_hm_lsa;
 extern struct table *hm_lsa;
 extern int lsa_count;
 
+extern struct table *hm_rt_index;
+extern struct rt_entry *rt;
+
 extern struct in_addr cur_router_id;
 extern int cur_router_port;
 
@@ -96,6 +99,12 @@ struct cost_control_struct {
 	int n_port;
 	struct link_cost_record *lcr_list;
 	long link_avg_nsec;
+};
+
+struct rt_entry {
+	struct in_addr to_addr;
+	struct in_addr thru_addr;
+	int thru_port;
 };
 
 #endif // _ROUTER_DEFS_

@@ -4,7 +4,7 @@ LDFLAGS = -pthread
 
 .PHONY: clean
 
-router: router.o handlers.o threads.o hm.o tools.o lsa.o
+router: router.o handlers.o db.o threads.o hm.o tools.o lsa.o
 
 debug: CFLAGS += -DDEBUG -g
 debug: router

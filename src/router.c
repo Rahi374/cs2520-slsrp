@@ -36,6 +36,9 @@ pthread_mutex_t mutex_hm_lsa = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_lsa;
 int lsa_count = 0;
 
+struct table *hm_rt_index;
+struct rt_entry *rt;
+
 struct in_addr cur_router_id;
 int cur_router_port;
 
@@ -206,6 +209,9 @@ int main(int argc, char *argv[])
 		goto free_hm_alive;
 	*/
 
+	rt = 0;
+	hm_rt_index = 0;
+
 	// TODO spawn timer threads
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
@@ -223,6 +229,10 @@ int main(int argc, char *argv[])
 	pthread_t lsa_generating_t;
 	dprintf("spawning our lsa generating thread\n");
 	pthread_create(&lsa_generating_t, NULL, lsa_generating_thread, 0);
+
+	pthread_t rt_builder_t;
+	dprintf("spawning our rt building thread\n");
+	pthread_create(&rt_builder_t, NULL, rt_building_thread, 0);
 
 	while (1)
 		usleep(10000000);

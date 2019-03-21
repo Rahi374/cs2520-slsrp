@@ -7,6 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "lib/db.h"
 #include "hm.h"
 #include "lsa.h"
 #include "router.h"
@@ -431,5 +432,27 @@ void *lsa_generating_thread(void *id)
 
 		// TODO config?
 		usleep(10000000);
+	}
+}
+
+void *rt_building_thread(void *id)
+{
+	dprintf("rt building thread starting\n");
+	usleep(20000000);//dont try to build table for first 20 seconds
+	while (1) {
+		dprintf("updating the rt\n");	
+		update_rt();
+		dprintf("done updating the rt\n");
+		int n = lsa_count;
+		if (n > 1) {
+			int i;
+			for(i = 0; i < lsa_count; i++){
+				char buf[50];
+				char *str = inet_ntoa(rt[i].to_addr);
+				strcpy(buf, str);
+				dprintf("for: %s send thru: %s\n", buf, inet_ntoa(rt[i].thru_addr));
+			}
+		}
+		usleep(20000000);
 	}
 }
