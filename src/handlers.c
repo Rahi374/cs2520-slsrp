@@ -118,6 +118,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	if (!packet->header->length)
 		return;
 
+	dprintf("adding to neighbour list\n");
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
 	neighbour = malloc(sizeof(struct neighbour));
@@ -272,9 +273,13 @@ void handle_lsa_packet(struct packet *packet)
 	struct lsa *lsa;
 	struct lsa_ack ack;
 
+	// dprintf("=== %s\n", __func__);
+
 	lsa = copy_lsa(lsa_tmp);
 	// TODO config?
 	lsa->age = 20;
+
+	print_lsa(lsa);
 
 	// if thread already exists for router, replace lsa and lsa sending list
 	pthread_mutex_lock(&mutex_hm_lsa);
@@ -338,6 +343,7 @@ void handle_lsa_packet(struct packet *packet)
 	pthread_mutex_unlock(&mutex_hm_lsa);
 
 	pthread_t lsa_sending_t;
+	//dprintf("spawning lsa sending thread from %s\n", __func__);
 	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
 
 send_ack:
@@ -353,6 +359,8 @@ void handle_lsa_ack_packet(struct packet *packet)
 	struct lsa_control_struct *con_struct;
 	struct lsa_ack *ack = packet->data;
 	int i;
+
+	// dprintf("=== ACK %s\n", __func__);
 
 	// get control struct for the router id
 	pthread_mutex_lock(&mutex_hm_lsa);
@@ -392,7 +400,6 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 		dprintf("failed to allocate memory for add neighbour thread input\n");
 		return;
 	}
-	dprintf("memcpying\n");
 	memcpy(input, packet->data, sizeof(struct full_addr));
 
 	dprintf("spawning thread to deal with add neighbour\n");

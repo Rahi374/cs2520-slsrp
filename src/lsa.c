@@ -111,9 +111,10 @@ int send_lsa(struct lsa *lsa, struct full_addr *addr)
 	sa.sin_port = addr->port;
 	sa.sin_family = AF_INET;
 
+	//dprintf("trying to send lsa to %s port %u\n", inet_ntoa(addr->addr), addr->port);
 	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 	if (con < 0) {
-		perror("error on connect in writer");
+		perror("=== error on connect in writer");
 		return -1;
 	}
 

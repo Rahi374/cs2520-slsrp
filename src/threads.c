@@ -286,8 +286,10 @@ void *lsa_sending_thread(void *id)
 	pthread_mutex_unlock(&con_struct->lock);
 
 	while (1) {
+		//dprintf("lsa sending loop, n = %d\n", n);
 		// loop through lsa sending table, send lsa and populate s
 		for (i = 0; i < n; i++) {
+			//dprintf("should i send lsa to %dth neighbour?\n", i);
 			pthread_mutex_lock(&con_struct->lock);
 
 			if (last_lsa != con_struct->lsa) {
@@ -303,14 +305,23 @@ void *lsa_sending_thread(void *id)
 			}
 
 			// skip if this neighbour sent us the lsa
+			//dprintf("origin neighbour = %s,\n",
+			//		inet_ntoa(con_struct->origin_neighbour.addr));
+			//dprintf("going to send to %s\n",
+			//		inet_ntoa(con_struct->lsa_sending_list[i].addr.addr));
 			if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
 			    con_struct->origin_neighbour.addr.s_addr) {
 				pthread_mutex_unlock(&con_struct->lock);
 				continue;
 			}
 
+			//dprintf("sending lsa %s\n",
+			//		inet_ntoa(last_lsa->router_id.addr));
+			//dprintf("to %s!\n",
+			//		inet_ntoa(con_struct->lsa_sending_list[i].addr.addr));
 			send_lsa(last_lsa, &con_struct->lsa_sending_list[i].addr);
 			con_struct->lsa_sending_list[i].s = 1;
+			//dprintf("done sending lsa!\n");
 
 			// hope this doesn't hit the edge case
 			n = con_struct->nentries;
@@ -341,6 +352,8 @@ void *lsa_generating_thread(void *id)
 	struct timespec cur_time;
 	struct neighbour *ptr;
 
+	dprintf("%s\n", __func__);
+
 	usleep(3000000);
 
 	// allocate and spawn lsa_sending_thread
@@ -361,9 +374,11 @@ void *lsa_generating_thread(void *id)
 	pthread_mutex_unlock(&mutex_hm_lsa);
 
 	pthread_t lsa_sending_t;
+	dprintf("spawning lsa sending thread from %s\n", __func__);
 	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
 
 	while (1) {
+		//dprintf("lsa generation loop!\n");
 		pthread_mutex_lock(&mutex_neighbours_list);
 		pthread_mutex_lock(&mutex_hm_cost);
 
@@ -377,6 +392,7 @@ void *lsa_generating_thread(void *id)
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
 			if (i >= new_lsa->nentries)
 				break;
+			dprintf("lsa generation loop! - adding neighbour\n");
 			cost = ((struct cost_control_struct *)lookup(hm_cost, ptr->id.s_addr))->link_avg_nsec;
 			new_lsa->lsa_entry_list[i].neighbour_id.addr.s_addr = ptr->id.s_addr;
 			new_lsa->lsa_entry_list[i].neighbour_id.port = ptr->port;
@@ -391,6 +407,7 @@ void *lsa_generating_thread(void *id)
 		new_lsa->seq = cur_time.tv_nsec + 1000000000 * cur_time.tv_sec;
 
 		// give lsa to sending thread
+		//dprintf("giving lsa to sending thread; nentries = %d\n", new_lsa->nentries);
 		pthread_mutex_lock(&con_struct->lock);
 		if (con_struct->lsa)
 			free_lsa(con_struct->lsa);
