@@ -4,10 +4,28 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
 #include "list.h"
 #include "lsa.h"
 #include "router.h"
 #include "tools.h"
+
+void print_lsa(struct lsa *lsa)
+{
+	int i;
+
+	printf("\tLSA - %s:%u\n", inet_ntoa(lsa->router_id.addr), lsa->router_id.port);
+	printf("\tseq = %ld, age = %d\n", lsa->seq, lsa->age);
+	printf("\t%d entries:\n", lsa->nentries);
+
+	for (i = 0; i < lsa->nentries; i++)
+		printf("\t\t%s:%u - %ld\n",
+			inet_ntoa(lsa->lsa_entry_list[i].neighbour_id.addr),
+			lsa->lsa_entry_list[i].neighbour_id.port,
+			lsa->lsa_entry_list[i].link_cost);
+}
 
 int lsa_is_valid(struct lsa *new_lsa, struct lsa *old_lsa)
 {
