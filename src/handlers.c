@@ -256,7 +256,8 @@ void handle_lc_resp_packet(struct packet *packet)
 	struct timespec *timespec_sent_back = (struct timespec*)packet->data;
 	//TODO does the data and packet need freed?
 	list_for_each_entry(ptr, &(con_struct->lcr_list->list), list) {
-		if ((ptr->time_out.tv_nsec == timespec_sent_back->tv_nsec)&&(ptr->time_out.tv_sec == timespec_sent_back->tv_sec)) {
+		if ((ptr->time_out.tv_nsec == timespec_sent_back->tv_nsec) &&
+		    (ptr->time_out.tv_sec == timespec_sent_back->tv_sec)) {
 			memcpy(&(ptr->time_in), &cur_time, sizeof(struct timespec));
 			break;
 		}
