@@ -44,7 +44,7 @@ struct lsa *copy_lsa(struct lsa *lsa);
 void free_lsa(struct lsa *lsa);
 struct lsa_sending_entry *
 realloc_lsa_sending_list(struct lsa_sending_entry *lsa_sending_list, int n);
-void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct);
+void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct, int n);
 int send_lsa(struct lsa *lsa, struct full_addr *addr);
 int send_lsa_ack(struct lsa_ack *ack, struct full_addr *addr);
 

@@ -320,10 +320,11 @@ void handle_lsa_packet(struct packet *packet)
 		dprintf("point 5\n");
 		free_lsa(con_struct->lsa);
 		con_struct->lsa = lsa;
-		realloc_lsa_sending_list(con_struct->lsa_sending_list,
-					 neighbour_count);
 		con_struct->nentries = neighbour_count;
-		populate_lsa_sending_list_neighbours(con_struct);
+		con_struct->lsa_sending_list =
+			realloc_lsa_sending_list(con_struct->lsa_sending_list,
+						 neighbour_count);
+		populate_lsa_sending_list_neighbours(con_struct, neighbour_count);
 		pthread_mutex_unlock(&con_struct->lock);
 		pthread_mutex_unlock(&mutex_neighbours_list);
 		dprintf("point 6\n");
@@ -338,11 +339,12 @@ void handle_lsa_packet(struct packet *packet)
 	con_struct->router_id.port = lsa->router_id.port;
 	con_struct->lsa = lsa;
 	pthread_mutex_lock(&mutex_neighbours_list);
-	// we be racing
+	pthread_mutex_lock(&con_struct->lock);
 	con_struct->nentries = neighbour_count;
-	con_struct->lsa_sending_list = calloc(con_struct->nentries,
+	con_struct->lsa_sending_list = calloc(neighbour_count,
 					      sizeof(struct lsa_sending_entry));
-	populate_lsa_sending_list_neighbours(con_struct);
+	populate_lsa_sending_list_neighbours(con_struct, neighbour_count);
+	pthread_mutex_unlock(&con_struct->lock);
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	dprintf("point 8\n");
@@ -365,8 +367,9 @@ send_ack:
 	dprintf("point 11\n");
 	ack.router_id.s_addr = lsa->router_id.addr.s_addr;
 	ack.seq = lsa->seq;
-	// this will fail only if a neighbour's death is handled at this moment
+	pthread_mutex_lock(&con_struct->lock);
 	send_lsa_ack(&ack, &con_struct->origin_neighbour);
+	pthread_mutex_unlock(&con_struct->lock);
 	dprintf("point 12\n");
 }
 
@@ -398,8 +401,10 @@ void handle_lsa_ack_packet(struct packet *packet)
 
 	// find the entry in the sending list and set a
 	for (i = 0; i < con_struct->nentries; i++) {
+		// invalid memory?
 		if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
 		    ack->router_id.s_addr) {
+			// invalid memory?
 			con_struct->lsa_sending_list[i].a = 1;
 			break;
 		}

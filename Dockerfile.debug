@@ -1,6 +1,6 @@
 FROM alpine:3.9
 
-RUN apk update && apk add gcc make musl-dev libc-dev
+RUN apk update && apk add gcc make musl-dev libc-dev valgrind
 
 #EXPOSE 50500
 
@@ -10,4 +10,5 @@ COPY ./src /router
 RUN make clean && make debug
 
 #CMD ["./router", "config"]
+#CMD ["valgrind", "./router"]
 CMD ["./router"]
