@@ -101,6 +101,7 @@ void *lc_thread(void *id)
 	unsigned int n_router_id = *((unsigned int *)id);
 	struct link_cost_record *ptr;
 	struct link_cost_record *ptr_temp;
+
 	pthread_mutex_lock(&mutex_hm_cost);
 	struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);
 	if (con_struct == 0){
@@ -111,9 +112,10 @@ void *lc_thread(void *id)
 	}
 	con_struct->pid_of_control_thread = getpid();
 	pthread_mutex_unlock(&mutex_hm_cost);
+
 	struct timespec cur_time;
 	struct timespec time_diff_timespec;
-	while(1){
+	while (1) {
 		clock_gettime(CLOCK_MONOTONIC, &cur_time); 
 		pthread_mutex_lock(&mutex_hm_cost);
 		struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);

@@ -246,6 +246,7 @@ void handle_lc_resp_packet(struct packet *packet)
 	struct timespec cur_time;
 	clock_gettime(CLOCK_MONOTONIC, &cur_time);
 	unsigned int n_router_id = packet->header->source_addr.s_addr;	
+
 	pthread_mutex_lock(&mutex_hm_cost);
 	struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);
 	if (con_struct == 0){
@@ -254,6 +255,7 @@ void handle_lc_resp_packet(struct packet *packet)
 		pthread_mutex_unlock(&mutex_hm_cost);
 		return;
 	}
+
 	struct timespec *timespec_sent_back = (struct timespec*)packet->data;
 	//TODO does the data and packet need freed?
 	list_for_each_entry(ptr, &(con_struct->lcr_list->list), list) {
