@@ -329,9 +329,73 @@ void *lsa_sending_thread(void *id)
 
 void *lsa_generating_thread(void *id)
 {
-	// malloc lsa and lsa entry list
+	struct lsa *new_lsa = NULL;
+	struct lsa_entry *new_lsa_entry_list = NULL;
+	struct lsa_control_struct *con_struct;
+	long cost;
+	int i;
+	struct timespec cur_time;
+	struct neighbour *ptr;
 
-	// get link costs, populate lsa
+	usleep(3000000);
 
-	// assemble the lsa, spawn lsa sending thread (see handle_lsa_packet())
+	// otherwise allocate and spawn lsa_sending_thread
+	con_struct = malloc(sizeof(struct lsa_control_struct));
+	pthread_mutex_init(&con_struct->lock, NULL);
+	con_struct->router_id.addr.s_addr = cur_router_id.s_addr;
+	con_struct->router_id.port = cur_router_port;
+	pthread_mutex_lock(&mutex_neighbours_list);
+	con_struct->nentries = neighbour_count;
+	pthread_mutex_unlock(&mutex_neighbours_list);
+	con_struct->lsa_sending_list = calloc(con_struct->nentries,
+					      sizeof(struct lsa_sending_entry));
+	populate_lsa_sending_list_neighbours(con_struct);
+
+	pthread_mutex_lock(&mutex_hm_lsa);
+	insert(hm_lsa, cur_router_id.s_addr, con_struct);
+	lsa_count++;
+	pthread_mutex_unlock(&mutex_hm_lsa);
+
+	pthread_t lsa_sending_t;
+	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
+
+	while (1) {
+		pthread_mutex_lock(&mutex_neighbours_list);
+		pthread_mutex_lock(&mutex_hm_cost);
+
+		// TODO con_struct->lsa = lsa;
+
+		new_lsa = malloc(sizeof(struct lsa));
+		new_lsa_entry_list = calloc(neighbour_count, sizeof(struct lsa_entry));
+		new_lsa->lsa_entry_list = new_lsa_entry_list;
+		new_lsa->nentries = neighbour_count;
+
+		// get link costs, populate lsa
+		i = 0;
+		list_for_each_entry(ptr, &neighbours_list->list, list) {
+			cost = ((struct cost_control_struct *)lookup(hm_cost, ptr->id.s_addr))->link_avg_nsec;
+			new_lsa->lsa_entry_list[i].neighbour_id.addr.s_addr = ptr->id.s_addr;
+			new_lsa->lsa_entry_list[i].neighbour_id.port = ptr->port;
+			new_lsa->lsa_entry_list[i].link_cost = cost;
+			i++;
+		}
+
+		new_lsa->router_id.addr.s_addr = cur_router_id.s_addr;
+		new_lsa->router_id.port = cur_router_port;
+
+		clock_gettime(CLOCK_MONOTONIC, &cur_time);
+		new_lsa->seq = cur_time.tv_nsec + 1000000 * cur_time.tv_sec;
+
+		// give lsa to sending thread
+		pthread_mutex_lock(&con_struct->lock);
+		free_lsa(con_struct->lsa);
+		con_struct->lsa = new_lsa;
+		pthread_mutex_unlock(&con_struct->lock);
+
+		pthread_mutex_unlock(&mutex_hm_cost);
+		pthread_mutex_unlock(&mutex_neighbours_list);
+
+		// TODO config?
+		usleep(3000000);
+	}
 }
