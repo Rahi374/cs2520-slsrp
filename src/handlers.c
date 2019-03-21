@@ -57,7 +57,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// assume it succeeds
 	write(sock, &resp, sizeof(resp));
 
-	//dprintf("adding to neighbour list\n");
+	dprintf("adding to neighbour list\n");
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
 	//dprintf("mallocing\n");
@@ -69,7 +69,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
-	//dprintf("spawning alive thread\n");
+	dprintf("spawning alive thread\n");
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
@@ -85,7 +85,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
-	//dprintf("spawning lc thread\n");
+	dprintf("spawning lc thread\n");
 	// spawn LCthread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
@@ -118,6 +118,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	if (!packet->header->length)
 		return;
 
+	dprintf("adding to neighbour list\n");
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
 	neighbour = malloc(sizeof(struct neighbour));

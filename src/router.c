@@ -101,11 +101,12 @@ void *listener_dispatch(void *s)
 	n = read_all_bytes_from_socket(sock, &header, sizeof(header));
 	if (n <= 0)
 		goto exit;
+	dprintf("$$$ received %d packet from %s\n", header.packet_type, inet_ntoa(header.source_addr));
 	// read data if necessary
 	data = NULL;
 	if (has_data(&header)) {
 		data = malloc(header.length);
-		//dprintf("reading %d bytes of data\n", header.length);
+		dprintf("reading %d bytes of data from %s\n", header.length, inet_ntoa(header.source_addr));
 		n = read_all_bytes_from_socket(sock, data, header.length);
 		if (n <= 0)
 			goto free_data;
@@ -158,7 +159,7 @@ void *listener_thread_func(void *ls)
 		socket_fd = (int*)malloc(sizeof(int));
 		*socket_fd = accept_sock;
 
-		//printf("connection made in listener: socket_fd = %d\n", *socket_fd);
+		printf("connection made in listener: socket_fd = %d\n", *socket_fd);
 		pthread_t listener_dispatch_thread;
 		pthread_create(&listener_dispatch_thread, NULL, listener_dispatch, socket_fd);
 	}

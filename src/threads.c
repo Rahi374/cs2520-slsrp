@@ -239,7 +239,7 @@ void *add_neighbour_thread(void *id)
 	}
 
 	for (i = 0; i < 3; i++) {
-		//dprintf("try #%d to add neighbour\n", i);
+		dprintf("try #%d to add neighbour\n", i);
 		// if not in neighbours list
 		pthread_mutex_lock(&mutex_neighbours_list);
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
@@ -250,7 +250,7 @@ void *add_neighbour_thread(void *id)
 		}
 		pthread_mutex_unlock(&mutex_neighbours_list);
 
-		//dprintf("sending neighbour request\n");
+		dprintf("sending neighbour request\n");
 		// send neighbour request
 		struct packet_header header;
 		header.packet_type = NEIGHBOR_REQ;
@@ -262,7 +262,7 @@ void *add_neighbour_thread(void *id)
 
 		write_header_and_data(sock, &header, 0, 0);
 
-		//dprintf("sent neighbour request\n");
+		dprintf("sent neighbour request\n");
 
 		usleep(2000000);
 	}
@@ -297,10 +297,12 @@ void *lsa_sending_thread(void *id)
 			dprintf("should i send lsa to %dth neighbour?\n", i);
 			pthread_mutex_lock(&con_struct->lock);
 
+			dprintf("YAAA\n");
 			if (last_lsa != con_struct->lsa) {
 				last_lsa = con_struct->lsa;
 				i = 0;
 			}
+			dprintf("BOOO\n");
 
 			if (con_struct->lsa_sending_list[i].a) {
 				pthread_mutex_unlock(&con_struct->lock);
@@ -394,6 +396,8 @@ void *lsa_generating_thread(void *id)
 		// get link costs, populate lsa
 		i = 0;
 		list_for_each_entry(ptr, &neighbours_list->list, list) {
+			if (i >= new_lsa->nentries)
+				break;
 			dprintf("lsa generation loop! - adding neighbour\n");
 			cost = ((struct cost_control_struct *)lookup(hm_cost, ptr->id.s_addr))->link_avg_nsec;
 			new_lsa->lsa_entry_list[i].neighbour_id.addr.s_addr = ptr->id.s_addr;
@@ -411,18 +415,31 @@ void *lsa_generating_thread(void *id)
 		// give lsa to sending thread
 		dprintf("giving lsa to sending thread; nentries = %d\n", new_lsa->nentries);
 		pthread_mutex_lock(&con_struct->lock);
-		if (con_struct->lsa)
+		if (con_struct->lsa) {
+			dprintf("point a1\n");
 			free_lsa(con_struct->lsa);
+			dprintf("point a2\n");
+		}
+		dprintf("point a3\n");
 		con_struct->lsa = new_lsa;
-		if (con_struct->lsa_sending_list)
+		dprintf("point a4\n");
+		if (con_struct->lsa_sending_list) {
+			dprintf("point a5\n");
 			realloc_lsa_sending_list(con_struct->lsa_sending_list,
 					neighbour_count);
-		else
-			con_struct->lsa_sending_list = calloc(con_struct->nentries,
+			dprintf("point a6\n");
+		} else {
+			dprintf("point a7\n");
+			con_struct->lsa_sending_list = calloc(neighbour_count,
 					sizeof(struct lsa_sending_entry));
+			dprintf("point a8\n");
+		}
 
+		dprintf("point a9\n");
 		con_struct->nentries = neighbour_count;
+		dprintf("point a10\n");
 		populate_lsa_sending_list_neighbours(con_struct);
+		dprintf("point a11\n");
 		pthread_mutex_unlock(&con_struct->lock);
 
 		pthread_mutex_unlock(&mutex_hm_cost);
