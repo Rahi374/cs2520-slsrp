@@ -37,6 +37,7 @@ struct lsa_control_struct {
 	int nentries;
 };
 
+void print_lsa(struct lsa *lsa);
 int lsa_is_valid(struct lsa *new_lsa, struct lsa *old_lsa);
 struct lsa *extract_lsa(struct packet *packet);
 struct lsa *copy_lsa(struct lsa *lsa);

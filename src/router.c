@@ -105,7 +105,7 @@ void *listener_dispatch(void *s)
 	data = NULL;
 	if (has_data(&header)) {
 		data = malloc(header.length);
-		dprintf("reading %d bytes of data\n", header.length);
+		//dprintf("reading %d bytes of data\n", header.length);
 		n = read_all_bytes_from_socket(sock, data, header.length);
 		if (n <= 0)
 			goto free_data;
@@ -158,7 +158,7 @@ void *listener_thread_func(void *ls)
 		socket_fd = (int*)malloc(sizeof(int));
 		*socket_fd = accept_sock;
 
-		printf("connection made in listener: socket_fd = %d\n", *socket_fd);
+		//printf("connection made in listener: socket_fd = %d\n", *socket_fd);
 		pthread_t listener_dispatch_thread;
 		pthread_create(&listener_dispatch_thread, NULL, listener_dispatch, socket_fd);
 	}

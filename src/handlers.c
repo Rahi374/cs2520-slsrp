@@ -25,15 +25,15 @@ void handle_neighbour_req_packet(struct packet *packet)
 	dprintf("handling neighbour req packet\n");
 
 	// initialize socket
-	dprintf("initializing socker for respondingn to add neighbour\n");
+	//dprintf("initializing socker for respondingn to add neighbour\n");
 	sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("error making socker");
 		return;
 	}
 
-	dprintf("connecting to socket to respond to add neighbour, port %u\n",
-			packet->header->source_port);
+	//dprintf("connecting to socket to respond to add neighbour, port %u\n",
+			//packet->header->source_port);
 	sa.sin_port = packet->header->source_port;
 	sa.sin_addr.s_addr = packet->header->source_addr.s_addr;
 	sa.sin_family = AF_INET;
@@ -57,19 +57,19 @@ void handle_neighbour_req_packet(struct packet *packet)
 	// assume it succeeds
 	write(sock, &resp, sizeof(resp));
 
-	dprintf("adding to neighbour list\n");
+	//dprintf("adding to neighbour list\n");
 	// add to neighbour list
 	pthread_mutex_lock(&mutex_neighbours_list);
-	dprintf("mallocing\n");
+	//dprintf("mallocing\n");
 	neighbour = malloc(sizeof(struct neighbour));
-	dprintf("adding to list\n");
+	//dprintf("adding to list\n");
 	neighbour->id.s_addr = packet->header->source_addr.s_addr;
 	neighbour->port = packet->header->source_port;
 	list_add_tail(&(neighbour->list), &(neighbours_list->list));
 	neighbour_count++;
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
-	dprintf("spawning alive thread\n");
+	//dprintf("spawning alive thread\n");
 	// spawn AliveThread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
@@ -85,7 +85,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	pthread_t alive_t;
 	pthread_create(&alive_t, NULL, alive_thread, (void *)neighbour_router_id);
 
-	dprintf("spawning lc thread\n");
+	//dprintf("spawning lc thread\n");
 	// spawn LCthread
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
@@ -163,7 +163,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 
 void handle_alive_packet(struct packet *packet)
 {
-	dprintf("handling alive packet\n");
+	//dprintf("handling alive packet\n");
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("Error making socket\n");
@@ -194,7 +194,7 @@ void handle_alive_packet(struct packet *packet)
 
 void handle_alive_resp_packet(struct packet *packet)
 {
-	dprintf("handling alive response packet\n");
+	//dprintf("handling alive response packet\n");
 	pthread_mutex_lock(&mutex_hm_alive);
 	struct alive_control_struct *con_struct = lookup(hm_alive, packet->header->source_addr.s_addr);
 	if (!con_struct){
@@ -207,7 +207,7 @@ void handle_alive_resp_packet(struct packet *packet)
 
 void handle_lc_packet(struct packet *packet)
 {
-	dprintf("handling lc packet\n");
+	//dprintf("handling lc packet\n");
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0) {
 		perror("Error making socket\n");
@@ -240,11 +240,12 @@ void handle_lc_packet(struct packet *packet)
 
 void handle_lc_resp_packet(struct packet *packet)
 {
-	dprintf("handling lc resp packet\n");
+	//dprintf("handling lc resp packet\n");
 	struct link_cost_record *ptr;
 	struct timespec cur_time;
 	clock_gettime(CLOCK_MONOTONIC, &cur_time);
 	unsigned int n_router_id = packet->header->source_addr.s_addr;	
+
 	pthread_mutex_lock(&mutex_hm_cost);
 	struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);
 	if (con_struct == 0){
@@ -253,6 +254,7 @@ void handle_lc_resp_packet(struct packet *packet)
 		pthread_mutex_unlock(&mutex_hm_cost);
 		return;
 	}
+
 	struct timespec *timespec_sent_back = (struct timespec*)packet->data;
 	//TODO does the data and packet need freed?
 	list_for_each_entry(ptr, &(con_struct->lcr_list->list), list) {
@@ -263,6 +265,8 @@ void handle_lc_resp_packet(struct packet *packet)
 		}
 	}
 	pthread_mutex_unlock(&mutex_hm_cost);
+
+	//dprintf("finishing handling lc resp packet\n");
 }
 	
 void handle_lsa_packet(struct packet *packet)
@@ -272,17 +276,27 @@ void handle_lsa_packet(struct packet *packet)
 	struct lsa *lsa;
 	struct lsa_ack ack;
 
+	dprintf("=== %s\n", __func__);
+
+	dprintf("point 0\n");
 	lsa = copy_lsa(lsa_tmp);
 	// TODO config?
 	lsa->age = 20;
 
+	print_lsa(lsa);
+
+	dprintf("point 1\n");
 	// if thread already exists for router, replace lsa and lsa sending list
 	pthread_mutex_lock(&mutex_hm_lsa);
 	con_struct = lookup(hm_lsa, lsa->router_id.addr.s_addr);
+	dprintf("/// point 1.1 - r id = %s\n", inet_ntoa(lsa->router_id.addr));
 	pthread_mutex_unlock(&mutex_hm_lsa);
 	if (con_struct) {
+		dprintf("point 1.2\n");
+		pthread_mutex_lock(&mutex_neighbours_list);
 		pthread_mutex_lock(&con_struct->lock);
 
+		dprintf("point 2\n");
 		// validate lsa (based on seq)
 		if (!lsa_is_valid(lsa, con_struct->lsa)) {
 			// still have to ack
@@ -291,14 +305,18 @@ void handle_lsa_packet(struct packet *packet)
 			// this will fail only if a neighbour's death is handled at this moment
 			send_lsa_ack(&ack, &con_struct->origin_neighbour);
 			pthread_mutex_unlock(&con_struct->lock);
+			pthread_mutex_unlock(&mutex_neighbours_list);
 			free_lsa(lsa);
+			dprintf("point 3\n");
 			return;
 		}
 
+		dprintf("point 4\n");
 		// need to save which neighbour gave us the lsa so we don't send it to them
 		con_struct->origin_neighbour.addr.s_addr = packet->header->source_addr.s_addr;
 		con_struct->origin_neighbour.port = packet->header->source_port;
 
+		dprintf("point 5\n");
 		free_lsa(con_struct->lsa);
 		con_struct->lsa = lsa;
 		realloc_lsa_sending_list(con_struct->lsa_sending_list,
@@ -306,9 +324,12 @@ void handle_lsa_packet(struct packet *packet)
 		con_struct->nentries = neighbour_count;
 		populate_lsa_sending_list_neighbours(con_struct);
 		pthread_mutex_unlock(&con_struct->lock);
+		pthread_mutex_unlock(&mutex_neighbours_list);
+		dprintf("point 6\n");
 		goto send_ack;
 	}
 
+	dprintf("point 7\n");
 	// otherwise allocate and spawn lsa_sending_thread
 	con_struct = malloc(sizeof(struct lsa_control_struct));
 	pthread_mutex_init(&con_struct->lock, NULL);
@@ -316,29 +337,36 @@ void handle_lsa_packet(struct packet *packet)
 	con_struct->router_id.port = lsa->router_id.port;
 	con_struct->lsa = lsa;
 	pthread_mutex_lock(&mutex_neighbours_list);
+	// we be racing
 	con_struct->nentries = neighbour_count;
-	pthread_mutex_unlock(&mutex_neighbours_list);
 	con_struct->lsa_sending_list = calloc(con_struct->nentries,
 					      sizeof(struct lsa_sending_entry));
 	populate_lsa_sending_list_neighbours(con_struct);
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
+	dprintf("point 8\n");
 	// need to save which neighbour gave us the lsa so we don't send it to them
 	con_struct->origin_neighbour.addr.s_addr = packet->header->source_addr.s_addr;
 	con_struct->origin_neighbour.port = packet->header->source_port;
 
+	dprintf("point 9\n");
 	pthread_mutex_lock(&mutex_hm_lsa);
 	insert(hm_lsa, lsa->router_id.addr.s_addr, con_struct);
 	lsa_count++;
 	pthread_mutex_unlock(&mutex_hm_lsa);
 
+	dprintf("point 10\n");
 	pthread_t lsa_sending_t;
+	dprintf("spawning lsa sending thread from %s\n", __func__);
 	pthread_create(&lsa_sending_t, NULL, lsa_sending_thread, (void *)con_struct);
 
 send_ack:
+	dprintf("point 11\n");
 	ack.router_id.s_addr = lsa->router_id.addr.s_addr;
 	ack.seq = lsa->seq;
 	// this will fail only if a neighbour's death is handled at this moment
 	send_lsa_ack(&ack, &con_struct->origin_neighbour);
+	dprintf("point 12\n");
 }
 
 void handle_lsa_ack_packet(struct packet *packet)
@@ -346,6 +374,8 @@ void handle_lsa_ack_packet(struct packet *packet)
 	struct lsa_control_struct *con_struct;
 	struct lsa_ack *ack = packet->data;
 	int i;
+
+	dprintf("=== ACK %s\n", __func__);
 
 	// get control struct for the router id
 	pthread_mutex_lock(&mutex_hm_lsa);
@@ -364,10 +394,8 @@ void handle_lsa_ack_packet(struct packet *packet)
 		pthread_mutex_unlock(&con_struct->lock);
 		return;
 	}
-	pthread_mutex_unlock(&con_struct->lock);
 
 	// find the entry in the sending list and set a
-	pthread_mutex_lock(&con_struct->lock);
 	for (i = 0; i < con_struct->nentries; i++) {
 		if (con_struct->lsa_sending_list[i].addr.addr.s_addr ==
 		    ack->router_id.s_addr) {
@@ -387,10 +415,9 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 		dprintf("failed to allocate memory for add neighbour thread input\n");
 		return;
 	}
-	dprintf("memcpying\n");
 	memcpy(input, packet->data, sizeof(struct full_addr));
 
-	dprintf("spawning thread to deal with add neighbour\n");
+	//dprintf("spawning thread to deal with add neighbour\n");
 	pthread_t add_neighbour_t;
 	pthread_create(&add_neighbour_t, NULL, add_neighbour_thread, (void *)input);
 }

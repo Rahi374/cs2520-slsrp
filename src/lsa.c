@@ -4,10 +4,28 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
 #include "list.h"
 #include "lsa.h"
 #include "router.h"
 #include "tools.h"
+
+void print_lsa(struct lsa *lsa)
+{
+	int i;
+
+	printf("\tLSA - %s:%u\n", inet_ntoa(lsa->router_id.addr), lsa->router_id.port);
+	printf("\tseq = %ld, age = %d\n", lsa->seq, lsa->age);
+	printf("\t%d entries:\n", lsa->nentries);
+
+	for (i = 0; i < lsa->nentries; i++)
+		printf("\t\t%s:%u - %ld\n",
+			inet_ntoa(lsa->lsa_entry_list[i].neighbour_id.addr),
+			lsa->lsa_entry_list[i].neighbour_id.port,
+			lsa->lsa_entry_list[i].link_cost);
+}
 
 int lsa_is_valid(struct lsa *new_lsa, struct lsa *old_lsa)
 {
@@ -63,18 +81,16 @@ void populate_lsa_sending_list_neighbours(struct lsa_control_struct *con_struct)
 	struct neighbour *ptr;
 	int i;
 
-	pthread_mutex_lock(&con_struct->lock);
-	pthread_mutex_lock(&mutex_neighbours_list);
 	i = 0;
 	list_for_each_entry(ptr, &neighbours_list->list, list) {
 		if (i >= con_struct->nentries)
 			break;
 		con_struct->lsa_sending_list[i].addr.addr.s_addr = ptr->id.s_addr;
+		con_struct->lsa_sending_list[i].addr.port = ptr->port;
 		con_struct->lsa_sending_list[i].s = 0;
 		con_struct->lsa_sending_list[i].a = 0;
+		i++;
 	}
-	pthread_mutex_unlock(&mutex_neighbours_list);
-	pthread_mutex_unlock(&con_struct->lock);
 }
 
 int send_lsa(struct lsa *lsa, struct full_addr *addr)
@@ -94,9 +110,10 @@ int send_lsa(struct lsa *lsa, struct full_addr *addr)
 	sa.sin_port = addr->port;
 	sa.sin_family = AF_INET;
 
+	dprintf("trying to send lsa to %s port %u\n", inet_ntoa(addr->addr), addr->port);
 	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
 	if (con < 0) {
-		perror("error on connect in writer");
+		perror("=== error on connect in writer");
 		return -1;
 	}
 
