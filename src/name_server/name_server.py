@@ -61,4 +61,4 @@ api.add_resource(RemoveRouter, '/remove/<string:addr>')
 api.add_resource(FlushAll,'/flush/')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
