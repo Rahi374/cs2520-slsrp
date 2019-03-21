@@ -2,3 +2,4 @@
 ui
 naming
 router
+*.o
