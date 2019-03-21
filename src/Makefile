@@ -6,7 +6,7 @@ LDFLAGS = -pthread
 
 router: router.o handlers.o threads.o hm.o tools.o lsa.o
 
-debug: CFLAGS += -DDEBUG
+debug: CFLAGS += -DDEBUG -g
 debug: router
 
 ui: ui.o tools.o
