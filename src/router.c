@@ -219,6 +219,10 @@ int main(int argc, char *argv[])
 	printf("Router is set up and listening on ip %s\n", inet_ntoa(cur_router_id));
 	fflush(stdout);
 
+	pthread_t lsa_generating_t;
+	dprintf("spawning our lsa generating thread\n");
+	pthread_create(&lsa_generating_t, NULL, lsa_generating_thread, 0);
+
 	while (1)
 		usleep(10000000);
 free_hm_cost:	
