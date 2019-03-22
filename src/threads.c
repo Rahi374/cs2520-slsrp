@@ -450,7 +450,7 @@ void *rt_building_thread(void *id)
 				char buf[50];
 				char *str = inet_ntoa(rt[i].to_addr);
 				strcpy(buf, str);
-				dprintf("for: %s send thru: %s\n", buf, inet_ntoa(rt[i].thru_addr));
+				dprintf("---------for: %s send thru: %s\n", buf, inet_ntoa(rt[i].thru_addr));
 			}
 		}
 		usleep(20000000);

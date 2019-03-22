@@ -4,62 +4,59 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include "lib/db.h"
 #include "hm.h"
 #include "lsa.h"
 #include "router.h"
 #include "tools.h"
 
-int minimum(int *status, long *dis, int n) {
-	int i, index;
-	long min;
-	min = LONG_MAX;
+int minDistance(long dist[], int *sptSet, int n) 
+{  
+	long min = LONG_MAX;
+	int min_index; 
+	int v;
+	for (v = 0; v < n; v++) 
+	if (sptSet[v] == 0 && dist[v] <= min) 
+	    min = dist[v], min_index = v; 
 
-	for (i = 0; i<n; i++) {
-		if(dis[i] < min && status[i] == 1) {
-			min = dis[i];
-			index = i;
-		}
-	}
-
-	if(status[index] == 1){
-		return index; //minimum unconsidered vertex distance
-	}else{
-		return -1;    //when all vertices considered
-	}
+	return min_index; 
 }
 
-void dijkstra(int n, long *dist, long *next, long s, void *cm) {
-	int status[n];
-	int u, v;
+void dijkstra(int n, int *next, void *cm, int src) 
+{ 
+	long graph[n][n];
+	memcpy(graph, cm, (sizeof(long)*n*n));
+	long dist[n];
+	int sptSet[n];  
 
-	//long costMat[n][n] = cm;
-	long costMat[n][n];
-	memcpy(costMat, cm, (sizeof(long)*n*n));
+	int parent[n];
 
-	//initialization
-	for(u = 0; u<n; u++) {
-		status[u] = 1;               //unconsidered vertex
-		dist[u] = costMat[u][s];     //distance from source
-		next[u] = s;
+	int i;
+	for (i = 0; i < n; i++) {
+	parent[0] = -1; 
+	dist[i] = LONG_MAX; 
+	sptSet[i] = 0; 
 	}
 
-	//for source vertex
-	status[s] = 2;
-	dist[s] = 0;
-	next[s] = -1; //-1 for starting vertex
+	dist[src] = 0;
 
-	while((u = minimum(status, dist, n)) > -1) {
-		status[u] = 2;//now considered
-		for (v = 0; v<n; v++) {
-			if(status[v] == 1) {
-				if(dist[v] > dist[u] + costMat[u][v]) {
-					dist[v] = dist[u] + costMat[u][v];   //update distance
-					next[v] = u;
-				}
+	int count;
+	for (count = 0; count < n - 1; count++) {
+		int u = minDistance(dist, sptSet, n);
+		sptSet[u] = 1;
+		int v;
+		for (v = 0; v < n; v++) {
+			if (sptSet[v] == 0 && graph[u][v] && dist[u] + graph[u][v] < dist[v] && graph[u][v] != LONG_MAX) {
+				parent[v] = u;
+				dist[v] = dist[u] + graph[u][v];
 			}
 		}
 	}
+	memcpy(next, &parent, sizeof(int)*n);
 }
 
 void update_rt()
@@ -84,7 +81,6 @@ void update_rt()
 	//make space for routing table
 	new_rt = (struct rt_entry*)malloc(sizeof(struct rt_entry)*n);
 
-	dprintf("new rt malloc'd\n");
 	int port_nums[n];//store the ports for the ind's
 	unsigned int all_addrs[n];
 
@@ -93,7 +89,11 @@ void update_rt()
 	int i, j;
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
-			cm[i][j] = LONG_MAX;
+			if (i == j) {
+				cm[i][j] = 0;
+			} else {
+				cm[i][j] = LONG_MAX;
+			}
 		}
 	}
 	
@@ -117,7 +117,6 @@ void update_rt()
 			int r_id_ind = (intptr_t)lookup(new_hm_rt_index, lsa_con->router_id.addr.s_addr);
 			if (r_id_ind == 0) {
 				insert(new_hm_rt_index, lsa_con->router_id.addr.s_addr, (void*)(intptr_t)router_num);
-				dprintf("5\n");
 				r_id_ind = router_num;
 				router_num++;
 			}
@@ -128,7 +127,6 @@ void update_rt()
 			for (l = 0; l < lsa_con->lsa->nentries; l++) {
 				int n_id_ind = (intptr_t)lookup(new_hm_rt_index, lsa_con->lsa->lsa_entry_list[l].neighbour_id.addr.s_addr);
 				if (n_id_ind == 0) {
-					dprintf("8\n");
 					insert(new_hm_rt_index, lsa_con->lsa->lsa_entry_list[l].neighbour_id.addr.s_addr, (void*)(intptr_t)router_num);
 					n_id_ind = router_num;
 					router_num++;
@@ -140,29 +138,43 @@ void update_rt()
 			struct rt_entry rt_ent;
 			memset(&rt_ent, 0, sizeof(struct rt_entry));
 			rt_ent.to_addr.s_addr = lsa_con->router_id.addr.s_addr;
+			//dprintf("***router: %s, has index: %d\n", inet_ntoa(lsa_con->router_id.addr), r_id_ind);
 			memcpy(&rt_arr[r_id_ind], &rt_ent, sizeof(struct rt_entry)); 
 			temp = temp->next;
 		}
 	}
-	//struct rt_entry
-	//struct in_addr to_addr
-	//struct in_addr thru_addr
-	//int thru_port
-
-
-	long dis[n], next[n];
+	/*
+	printf("print cost matrix\n");
+	int h, c;
+	for(h = 0; h < n; h++){
+		for(c = 0; c < n; c++){
+			printf(" %ld", cm[h][c]);	
+		}
+		printf("\n");
+	}
+	*/
+	long dis[n];
+	int next[n];
 	int start = (intptr_t)lookup(new_hm_rt_index, cur_router_id.s_addr);
 	if (start == 0) {
 		printf("\n\nError: lookup was 0 in db start index lookup\n\n");
 		return;
 	}
 	start--;//okay so gross but we start at 1 and sub 1 cause hm grossness
-	dijkstra(n, dis, next, start,(void*)cm);
-	
+	dijkstra(n, next, (void*)cm, start);
+
+	next[start] = start;
+	/*
+	printf("\nnext contains:");
+	int k;
+	for (k = 0; k < n; k++) {
+		printf(" %d", next[k]);
+	}
+	printf("\n");
+	fflush(stdout);
+	*/
 	//walk next back for each of the nodes
 	for(i = 0; i < n; i++){
-		//int ind = (int)lookup(new_hm_rt_index, all_addrs[i]);
-		//ind--;
 		if (all_addrs[i] != cur_router_id.s_addr) {
 			int temp_ind = i;
 			while (next[temp_ind] != start) {
@@ -189,7 +201,7 @@ void update_rt()
 
 		pthread_mutex_unlock(&mutex_hm_lsa);
 		usleep(1000000);
-		destroyTable(tmp_hm_rt_index);
+		destroyExcludeElements(tmp_hm_rt_index);
 		free(tmp_rt);
 
 	}

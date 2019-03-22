@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -139,6 +140,7 @@ int send_lsa(struct lsa *lsa, struct full_addr *addr)
 	write_header_and_data(sock, &header, data, data_len);
 
 	free(data);
+	close(sock);
 	return 0;
 }
 
@@ -173,6 +175,7 @@ int send_lsa_ack(struct lsa_ack *ack, struct full_addr *addr)
 	header.checksum_header = checksum_header(&header);
 
 	write_header_and_data(sock, &header, ack, sizeof(struct lsa_ack));
+	close(sock);
 
 	return 0;
 

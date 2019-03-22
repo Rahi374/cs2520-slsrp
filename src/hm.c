@@ -16,6 +16,24 @@ struct table *createTable(int size)
 
 void *destroyTable(struct table *t)
 {
+	int i;
+	for (i = 0; i < t->size; i++) {
+		struct node *list = t->list[i];
+		struct node *temp = list;
+		struct node *temp2 = list;
+		while (temp) {
+			temp2 = temp;
+			temp = temp->next;
+			free(temp->val);
+			free(temp);
+		}
+	}
+	free(t->list);
+	free(t);
+}
+
+void *destroyExcludeElements(struct table *t)
+{
 	free(t->list);
 	free(t);
 }

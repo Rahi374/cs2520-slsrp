@@ -14,6 +14,7 @@ struct table {
 
 struct table *createTable(int size);
 void *destroyTable(struct table *t);
+void *destroyExcludeElements(struct table *t);
 int hashCode(struct table *t, unsigned int key);
 void insert(struct table *t, unsigned int key, void *val);
 void* lookup(struct table *t, unsigned int key);

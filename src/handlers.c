@@ -191,6 +191,7 @@ void handle_alive_packet(struct packet *packet)
 	resp.length = 0;
 	resp.checksum_header = checksum_header(&resp);
 	write(sock, &resp, sizeof(resp));
+	close(sock);
 }
 
 void handle_alive_resp_packet(struct packet *packet)
@@ -237,6 +238,7 @@ void handle_lc_packet(struct packet *packet)
 	lc_packet.length = sizeof(struct timespec);
 	lc_packet.checksum_header = checksum_header(&lc_packet);
 	write_header_and_data(sock, &lc_packet, packet->data, sizeof(struct timespec));
+	close(sock);
 }
 
 void handle_lc_resp_packet(struct packet *packet)

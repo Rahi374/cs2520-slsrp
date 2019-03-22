@@ -120,7 +120,8 @@ void *listener_dispatch(void *s)
 	packet->data = data;
 	packet->header = malloc(sizeof(header));
 	memcpy(packet->header, &header, sizeof(header));
-	packet->sock = sock;//TODO will this socket stay open when this thread dies?
+	//packet->sock = sock;//TODO will this socket stay open when this thread dies?
+	close(sock);
 
 	// baton pass
 	pthread_t packet_handler_thread;
