@@ -74,8 +74,23 @@ void *handle_packet(void *p)
 		case LSA_ACK:
 			handle_lsa_ack_packet(packet);
 			break;
+		case FILE_TRANSFER:
+			handle_file_transfer_packet(packet);
+			break;
+		case FILE_TRANSFER_ACK:
+			handle_file_transfer_ack_packet(packet);
+			break;
 		case UI_CONTROL_ADD_NEIGHBOUR:
 			 handle_ui_control_add_neighbour(packet);
+			 break;
+		case UI_CONTROL_SEND_FILE:
+			 handle_ui_control_send_file_packet(packet);
+			 break;
+		case UI_CONTROL_GET_RT:
+			 handle_ui_control_get_rt_packet(packet);
+			 break;
+		case UI_CONTROL_GET_NEIGHBOURS:
+			 handle_ui_control_get_neighbours_packet(packet);
 			 break;
 		case TEST_PACKET:
 			handle_test_packet(packet);
@@ -120,9 +135,11 @@ void *listener_dispatch(void *s)
 	packet->data = data;
 	packet->header = malloc(sizeof(header));
 	memcpy(packet->header, &header, sizeof(header));
-	//packet->sock = sock;//TODO will this socket stay open when this thread dies?
-	close(sock);
-
+	if (packet->header->packet_type == UI_CONTROL_GET_RT || packet->header->packet_type == UI_CONTROL_GET_NEIGHBOURS) {
+		packet->sock = sock;
+	} else {
+		close(sock);
+	}
 	// baton pass
 	pthread_t packet_handler_thread;
 	pthread_create(&packet_handler_thread, NULL, handle_packet, (void *)packet);

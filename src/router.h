@@ -41,9 +41,13 @@ enum packet_type {
 	LINK_COST,
 	LINK_COST_RESP,
 	LINK_DOWN,
+	FILE_TRANSFER,
+	FILE_TRANSFER_ACK,
 	UI_CONTROL_ADD_NEIGHBOUR,
 	UI_CONTROL_KILL_NEIGHBOUR,
-	UI_CONTROL_GIMME_ROUTING_TABLE,
+	UI_CONTROL_SEND_FILE,
+	UI_CONTROL_GET_RT,
+	UI_CONTROL_GET_NEIGHBOURS,
 	TEST_PACKET,
 };
 
@@ -52,6 +56,7 @@ enum packet_type {
 // NEIGHBOR_REQ_RESP - 0 for negative, 1 for affirmative
 // LSA - LSA data
 // LSA_ACK - type long, sequence number
+// var is a utility var for specific uses
 struct packet_header {
 	struct in_addr source_addr;
 	unsigned int source_port;
@@ -59,6 +64,7 @@ struct packet_header {
 	unsigned int destination_port;
 	enum packet_type packet_type;
 	int length;
+	int var;
 	unsigned int checksum_header;
 	unsigned int checksum_data;
 };
@@ -105,6 +111,15 @@ struct rt_entry {
 	struct in_addr to_addr;
 	struct in_addr thru_addr;
 	int thru_port;
+};
+
+struct file_control_struct {
+	long file_id;//create via timespec transform to ns
+};
+
+struct file_piece_struct {
+	int piece_num;
+	int num_bytes;
 };
 
 #endif // _ROUTER_DEFS_

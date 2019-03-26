@@ -103,9 +103,10 @@ void add_neighbor()
 	int n = write_header_and_data(sock, &pack_header, &neighbour_struct, sizeof(struct full_addr));
 	if (n < 0) {
 		perror("error in write to socket\n");
+		close(sock);
 		return;
 	}
-	//TODO read on the socket and wait for router to tell me success/fail and report that
+	close(sock);
 }
 
 
@@ -164,8 +165,10 @@ void test_message()
 	int n = write_header_and_data(sock, &pack_header, msg, strlen(msg)+1);
 	if (n < 0) {
 		perror("error in write to socket\n");
+		close(sock);
 		return;
 	}
+	close(sock);
 }
 
 
@@ -185,19 +188,111 @@ void remove_neighbor()
 	printf("TODO\n");
 }
 
-void get_topology()
-{
-	printf("TODO\n");
-}
 
 void get_routing_table()
 {
-	printf("TODO\n");
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = router_port;
+	sa.sin_addr.s_addr = inet_addr(router_ip);
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+	struct packet_header pack_header;
+	pack_header.packet_type = UI_CONTROL_GET_RT;
+	pack_header.length = 0;
+	inet_aton(router_ip, &pack_header.destination_addr);
+	pack_header.destination_port = router_port;
+	pack_header.source_addr = sa.sin_addr;
+	pack_header.source_port = sa.sin_port;
+
+	int n = write_header_and_data(sock, &pack_header, 0, 0);
+	if (n < 0) {
+		perror("error in write to socket\n");
+		close(sock);
+		return;
+	}
+	//read table back (first read num elements
+	struct packet_header ret_pack;
+	read_all_bytes_from_socket(sock, &ret_pack, sizeof(struct packet_header));
+	struct rt_entry *rt_data = malloc(ret_pack.length);
+	read_all_bytes_from_socket(sock, rt_data, ret_pack.length);
+	printf("Routing Table:\n");
+	int i;
+	for (i = 0; i < ret_pack.var; i++) {
+		char buf[50];
+		char *str = inet_ntoa(rt_data[i].to_addr);
+		strcpy(buf, str);
+		printf("----------for: %s send thru: %s----------\n", buf, inet_ntoa(rt_data[i].thru_addr));
+	}
+	
+	free(rt_data);
+	close(sock);
 }
 
+void get_neighbor_list()
+{
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = router_port;
+	sa.sin_addr.s_addr = inet_addr(router_ip);
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+	struct packet_header pack_header;
+	pack_header.packet_type = UI_CONTROL_GET_NEIGHBOURS;
+	pack_header.length = 0;
+	inet_aton(router_ip, &pack_header.destination_addr);
+	pack_header.destination_port = router_port;
+	pack_header.source_addr = sa.sin_addr;
+	pack_header.source_port = sa.sin_port;
+
+	int n = write_header_and_data(sock, &pack_header, 0, 0);
+	if (n < 0) {
+		perror("error in write to socket\n");
+		close(sock);
+		return;
+	}
+	//read table back (first read num elements
+	struct packet_header ret_pack;
+	read_all_bytes_from_socket(sock, &ret_pack, sizeof(struct packet_header));
+	struct in_addr *n_arr = malloc(ret_pack.length);
+	read_all_bytes_from_socket(sock, n_arr, ret_pack.length);
+	printf("Listing neighbours for the router:\n");
+	if (ret_pack.var > 0) {
+		int i;
+		for (i = 0; i < ret_pack.var; i++) {
+			printf("-- %s\n", inet_ntoa(n_arr[i]));
+		}
+	} else {
+		printf("no neighbours\n");
+	}
+	free(n_arr);
+	close(sock);
+}
 void test_external_writer()
 {
-	printf("Testing External Writer:\n");
+	printf("Testing External Writer: NO LONGER SUPPORTED\n");
 	printf("	1 - Make thread to loop sending input\n");
 	printf("	2 - Send neighbor request\n");
 	char send_input[5];
@@ -224,7 +319,7 @@ void process_input(char *input)
 			remove_neighbor();
 			break;
 		case 3:
-			get_topology();
+			get_neighbor_list();
 			break;
 		case 4:
 			get_routing_table();
@@ -245,10 +340,10 @@ void start_repl()
 		printf("\nEnter a command:\n");
 		printf("	0 - Test Message\n");
 		printf("	1 - Add neighbor\n");
-		printf("	2 - Remove neighbor\n");
-		printf("	3 - Get Topology\n");
+		printf("	2 - Remove neighbor TODO\n");
+		printf("	3 - Get Neighbor List\n");
 		printf("	4 - Get Routing Table\n");
-		printf("	5 - test external writer\n");
+		printf("	5 - test external writer NO LONGER USED\n");
 		printf("	6 - Buncha other stuff that isn't implemented\n");
 		char input[5];
 		scanf("%s", input);

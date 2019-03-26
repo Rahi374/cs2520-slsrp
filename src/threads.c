@@ -435,6 +435,21 @@ void *lsa_generating_thread(void *id)
 	}
 }
 
+void *send_file_thread(void *id)
+{
+	dprintf("starting thread for sending file");
+}
+
+void *rec_first_file_part_thread(void *id)
+{
+	dprintf("starting thread for receiving first part of a file");
+}
+
+void *rec_file_thread(void *id)
+{
+	dprintf("starting thread for receiving part of a file");
+}
+
 void *rt_building_thread(void *id)
 {
 	dprintf("rt building thread starting\n");

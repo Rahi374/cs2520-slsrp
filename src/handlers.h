@@ -11,7 +11,12 @@ void handle_lc_packet(struct packet *packet);
 void handle_lc_resp_packet(struct packet *packet);
 void handle_lsa_packet(struct packet *packet);
 void handle_lsa_ack_packet(struct packet *packet);
+void handle_file_transfer_packet(struct packet *packet);
+void handle_file_transfer_ack_packet(struct packet *packet);
 void handle_ui_control_add_neighbour(struct packet *packet);
+void handle_ui_control_get_rt_packet(struct packet *packet);
+void handle_ui_control_get_neighbours_packet(struct packet *packet);
+void handle_ui_control_send_file_packet(struct packet *packet);
 void handle_test_packet(struct packet *packet);
 
 #endif // _HANDLERS_H_

@@ -16,6 +16,9 @@ int has_data(struct packet_header *header)
 		case UI_CONTROL_ADD_NEIGHBOUR:
 		case LINK_COST:
 		case LINK_COST_RESP:
+		case FILE_TRANSFER:
+		case FILE_TRANSFER_ACK:
+		case UI_CONTROL_SEND_FILE:
 			return 1;
 		default:
 			return 0;

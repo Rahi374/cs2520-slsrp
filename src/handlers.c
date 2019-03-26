@@ -395,6 +395,16 @@ void handle_lsa_ack_packet(struct packet *packet)
 	pthread_mutex_unlock(&con_struct->lock);
 }
 
+void handle_file_transfer_packet(struct packet *packet)
+{
+	dprintf("handling packet for file transfer\n");
+}
+
+void handle_file_transfer_ack_packet(struct packet *packet)
+{
+	dprintf("handling packet for file transfer\n");
+}
+
 void handle_ui_control_add_neighbour(struct packet *packet)
 {
 	dprintf("received ui command to add neighbour!\n");
@@ -409,6 +419,69 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 	dprintf("spawning thread to deal with add neighbour\n");
 	pthread_t add_neighbour_t;
 	pthread_create(&add_neighbour_t, NULL, add_neighbour_thread, (void *)input);
+}
+
+void handle_ui_control_send_file_packet(struct packet *packet)
+{
+	dprintf("received ui command to send file\n");
+}
+
+void handle_ui_control_get_rt_packet(struct packet *packet)
+{
+	dprintf("ui get rt request received\n");
+	pthread_mutex_lock(&mutex_hm_lsa);
+	void *rt_data = malloc(sizeof(struct rt_entry)*lsa_count);		
+	memcpy(rt_data, rt, sizeof(struct rt_entry)*lsa_count);
+
+	struct packet_header rt_packet;
+	memset(&rt_packet, 0, sizeof(struct packet_header));
+	rt_packet.source_addr.s_addr = cur_router_id.s_addr;
+	rt_packet.source_port = cur_router_port;
+	rt_packet.destination_addr.s_addr = packet->header->source_addr.s_addr;
+	rt_packet.destination_port = packet->header->source_port;
+	rt_packet.packet_type = UI_CONTROL_GET_RT;
+	rt_packet.length = lsa_count*sizeof(struct rt_entry);
+	rt_packet.var = lsa_count;
+	rt_packet.checksum_header = checksum_header(&rt_packet);
+
+	write_header_and_data(packet->sock, &rt_packet, rt_data, rt_packet.length);
+	
+	pthread_mutex_unlock(&mutex_hm_lsa);
+	free(rt_data);
+	close(packet->sock);
+}
+
+void handle_ui_control_get_neighbours_packet(struct packet *packet)
+{
+	dprintf("ui get neighbours list request recevied\n");
+	struct neighbour *ptr;
+	pthread_mutex_lock(&mutex_neighbours_list);
+
+	struct in_addr *n_arr;
+	if (neighbour_count > 0){
+		n_arr = malloc(neighbour_count * sizeof(struct in_addr));
+		int entry_num = 0;
+		list_for_each_entry(ptr, &neighbours_list->list, list) {
+			memcpy(&n_arr[entry_num], &ptr->id, sizeof(struct in_addr));
+			entry_num++;
+		}
+	}
+	struct packet_header nl_packet;
+	memset(&nl_packet, 0, sizeof(struct packet_header));
+	nl_packet.source_addr.s_addr = cur_router_id.s_addr;
+	nl_packet.source_port = cur_router_port;
+	nl_packet.destination_addr.s_addr = packet->header->source_addr.s_addr;
+	nl_packet.destination_port = packet->header->source_port;
+	nl_packet.packet_type = UI_CONTROL_GET_NEIGHBOURS;
+	nl_packet.length = neighbour_count * sizeof(struct in_addr);
+	nl_packet.var = neighbour_count;
+	nl_packet.checksum_header = checksum_header(&nl_packet);
+
+	write_header_and_data(packet->sock, &nl_packet, n_arr, nl_packet.length);
+
+	pthread_mutex_unlock(&mutex_neighbours_list);
+	free(n_arr);
+	close(packet->sock);
 }
 
 void handle_test_packet(struct packet *packet)
