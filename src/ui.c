@@ -201,6 +201,9 @@ void test_external_writer()
 
 void process_input(char *input)
 {
+	if (!strcmp(input, "exit"))
+		exit(0);
+
 	int inp = atoi(input);
 	switch(inp){
 		case 0:
