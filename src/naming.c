@@ -5,19 +5,21 @@
 
 #include "naming.h"
 
-size_t dataSize=0;
+size_t dataSize = 0;
 size_t curlWriteFunction(void* ptr, size_t size, size_t nmemb, void* userdata)
 {
-	char** stringToWrite=(char**)userdata;
+	char **stringToWrite = (char**)userdata;
 	const char* input=(const char*)ptr;
-	if(nmemb==0) return 0;
-	if(!*stringToWrite)
+	if (nmemb == 0)
+		return 0;
+	if (!*stringToWrite)
 		*stringToWrite=malloc(nmemb+1);
 	else
 		*stringToWrite=realloc(*stringToWrite, dataSize+nmemb+1);
 	memcpy(*stringToWrite+dataSize, input, nmemb);
-	dataSize+=nmemb;
+	dataSize += nmemb;
 	(*stringToWrite)[dataSize]='\0';
+	dataSize = 0;
 	return nmemb;
 }
 
@@ -29,23 +31,28 @@ int name_to_ip_port(char *name, char *ip_dest, int *port_dest)
 	CURL *curl;
 	CURLcode res;
 	char *str = (char *)malloc(100);
-	curl = curl_easy_init();
-	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &curlWriteFunction);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &str);
-		res = curl_easy_perform(curl);
-		if(res != CURLE_OK)
-			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
-		curl_easy_cleanup(curl);
+	curl = curl_easy_init();
+	if(!curl) {
+		fprintf(stderr, "failed to initialize curl\n");
+		return -1;
 	}
+
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &curlWriteFunction);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, &str);
+	res = curl_easy_perform(curl);
+	if(res != CURLE_OK)
+		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+	curl_easy_cleanup(curl);
+
 	char *error_str = "\"0\"\n";
 	if(strcmp(str, error_str)==0){
 		free(str);
 		return -1;
 	}
+
 	char *delim_p = strchr(str, ':');
 	*delim_p = '\0';
 	str++;//delete opening quote

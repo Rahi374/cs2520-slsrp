@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 #include "router.h"
+#include "naming.h"
 #include "tools.h"
 
 char *router_ip;
@@ -48,29 +49,17 @@ void *writer_func()
 
 void add_neighbor()
 {
-	int counter;
+	char buf[20];
 	char neighbor_id_to[16];
-	char neighbor_port_to[10];
+	int neighbor_port_to_int;
 
-	printf("Specify an ID to send a neighbor request to:\n");
-	scanf("%s", neighbor_id_to);
-	for(counter = 0; counter < 16; counter++){
-		if(neighbor_id_to[counter] == 0){
-			neighbor_id_to[counter] = '\0';
-			break;
-		}
+	printf("Specify the hostname to send a neighbour request to\n");
+	scanf("%s", buf);
+	int res = name_to_ip_port(buf, neighbor_id_to, &neighbor_port_to_int);
+	if (res) {
+		printf("router not found for that name\n");
+		return;
 	}
-	neighbor_id_to[15] = '\0';
-	printf("Specify a port for that neighbor:\n");
-	scanf("%s", neighbor_port_to);
-	for(counter = 0; counter < 10; counter++){
-		if(neighbor_port_to[counter] == 0){
-			neighbor_port_to[counter] = '\0';
-			break;
-		}
-	}
-	neighbor_port_to[9] = '\0';
-	int neighbor_port_to_int = atoi(neighbor_port_to);
 
 	int sock = socket(AF_INET,SOCK_STREAM, 0);
 	if (sock < 0) {
@@ -212,6 +201,9 @@ void test_external_writer()
 
 void process_input(char *input)
 {
+	if (!strcmp(input, "exit"))
+		exit(0);
+
 	int inp = atoi(input);
 	switch(inp){
 		case 0:
@@ -259,12 +251,25 @@ void start_repl()
 
 int main(int argc, char *argv[])
 {
-	if (argc < 3){
-		printf("needs ip and port\n");
-	}else{
-		router_ip = argv[1];
-		router_port = atoi(argv[2]);
-		start_repl();
+	char ip_addr[16];
+	int port;
+
+	if (argc < 2) {
+		printf("needs hostname\n");
+		return 1;
 	}
+
+	int res = name_to_ip_port(argv[1], ip_addr, &port);
+	if (res == 0) {
+		printf("ip addr final: %s\n", ip_addr);
+		printf("port final: %d\n", port);
+	} else {
+		printf("router not found for that name\n");
+		return 1;
+	}
+
+	router_ip = ip_addr;
+	router_port = port;
+	start_repl();
 	return 0;
 }
