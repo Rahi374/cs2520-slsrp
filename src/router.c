@@ -19,6 +19,7 @@
 #include "router.h"
 
 #include "handlers.h"
+#include "naming.h"
 #include "threads.h"
 #include "tools.h"
 
@@ -191,6 +192,12 @@ int main(int argc, char *argv[])
 	int listen_sock;
 	struct ifreq ifr;
 
+	if (argc < 2) {
+		printf("you must specify router name\n");
+		printf("you may also specify network device name after that\n");
+		return 1;
+	}
+
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0) {
 		perror("Error making socket for listener");
@@ -235,7 +242,10 @@ int main(int argc, char *argv[])
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
 	ifr.ifr_addr.sa_family = AF_INET;
-	strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
+	if (argc >= 3)
+		strncpy(ifr.ifr_name, argv[2], IFNAMSIZ-1);
+	else
+		strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
 	ioctl(listen_sock, SIOCGIFADDR, &ifr);
 
 	cur_router_port = sag.sin_port;
@@ -243,6 +253,7 @@ int main(int argc, char *argv[])
 	printf("Router is set up and listening on port %d\n", sag.sin_port);
 	printf("Router is set up and listening on ip %s\n", inet_ntoa(cur_router_id));
 	fflush(stdout);
+	register_router(argv[1], inet_ntoa(cur_router_id), cur_router_port);
 
 	pthread_t lsa_generating_t;
 	dprintf("spawning our lsa generating thread\n");
