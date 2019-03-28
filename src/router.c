@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -22,6 +23,8 @@
 #include "naming.h"
 #include "threads.h"
 #include "tools.h"
+
+#define DELAY_PROB 10
 
 int lsa_sending_interval_us;
 int lsa_generating_interval_us;
@@ -76,6 +79,10 @@ int load_config(const char *config_fn)
 void *handle_packet(void *p)
 {
 	struct packet *packet = (struct packet *)p;
+	unsigned int seed = time(NULL);
+
+	if (rand_r(&seed) % 100 < DELAY_PROB)
+		usleep((rand_r(&seed) % 1000) * 10);
 
 	switch (packet->header->packet_type) {
 		case NEIGHBOR_REQ:
