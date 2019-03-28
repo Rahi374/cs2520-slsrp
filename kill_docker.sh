@@ -1,1 +1,1 @@
-docker ps | grep router | awk '{ print  }' | xargs docker kill
+docker ps | grep router | awk '{ print $1 }' | xargs docker kill
