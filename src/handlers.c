@@ -18,11 +18,23 @@ void handle_neighbour_req_packet(struct packet *packet)
 	struct packet_header resp;
 	unsigned int *neighbour_router_id;
 	struct neighbour *neighbour;
+	struct neighbour *ptr;
 	int sock;
 	int con;
 	struct sockaddr_in sa;
 
 	dprintf("handling neighbour req packet\n");
+
+	// check if already in neighbour list
+	pthread_mutex_lock(&mutex_neighbours_list);
+	list_for_each_entry(ptr, &neighbours_list->list, list) {
+		if (ptr->id.s_addr == packet->header->source_addr.s_addr) {
+			dprintf("already in neighbour list");
+			pthread_mutex_unlock(&mutex_neighbours_list);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	// initialize socket
 	dprintf("initializing socker for respondingn to add neighbour\n");
@@ -111,12 +123,24 @@ void handle_neighbour_resp_packet(struct packet *packet)
 {
 	unsigned int *neighbour_router_id;
 	struct neighbour *neighbour;
+	struct neighbour *ptr;
 
 	dprintf("received neighbour response\n");
 
 	// do nothing if neighbour doesn't want to be friends
 	if (!packet->header->length)
 		return;
+
+	// check if already in neighbour list
+	pthread_mutex_lock(&mutex_neighbours_list);
+	list_for_each_entry(ptr, &neighbours_list->list, list) {
+		if (ptr->id.s_addr == packet->header->source_addr.s_addr) {
+			dprintf("already in neighbour list");
+			pthread_mutex_unlock(&mutex_neighbours_list);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&mutex_neighbours_list);
 
 	dprintf("adding to neighbour list\n");
 	// add to neighbour list
