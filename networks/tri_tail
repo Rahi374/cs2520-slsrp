@@ -1,0 +1,12 @@
+[bob]
+alice
+eve
+mal
+[alice]
+bob
+eve
+[eve]
+bob
+alice
+[mal]
+bob
