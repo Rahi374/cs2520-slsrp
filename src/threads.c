@@ -154,8 +154,7 @@ void *lc_thread(void *id)
 		send_link_cost_message(con_struct, single_lcr);
 		pthread_mutex_unlock(&mutex_hm_cost);
 		dprintf("Sent lc msg to neighbor\n");
-		//TODO make this value based on config values
-		usleep(2000000);
+		usleep(lc_sending_interval_us);
 	}
 }
 
@@ -202,7 +201,7 @@ void *alive_thread(void *id)
 			con_struct->num_unacked_messages++;
 		}
 		pthread_mutex_unlock(&mutex_hm_alive);
-		usleep(2000000);
+		usleep(alive_sending_interval_us);
 	}
 }
 
@@ -336,8 +335,7 @@ void *lsa_sending_thread(void *id)
 			usleep(1000000);
 		}
 
-		// TODO get this from config?
-		usleep(3000000);
+		usleep(lsa_sending_interval_us);
 
 		pthread_mutex_lock(&con_struct->lock);
 		n = con_struct->nentries;
@@ -430,8 +428,7 @@ void *lsa_generating_thread(void *id)
 		pthread_mutex_unlock(&mutex_hm_cost);
 		pthread_mutex_unlock(&mutex_neighbours_list);
 
-		// TODO config?
-		usleep(10000000);
+		usleep(lsa_generating_interval_us);
 	}
 }
 

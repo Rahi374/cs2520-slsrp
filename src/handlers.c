@@ -280,8 +280,7 @@ void handle_lsa_packet(struct packet *packet)
 	// dprintf("=== %s\n", __func__);
 
 	lsa = copy_lsa(lsa_tmp);
-	// TODO config?
-	lsa->age = 20;
+	lsa->age = lsa_initial_age;
 
 	print_lsa(lsa);
 

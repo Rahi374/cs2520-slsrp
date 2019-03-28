@@ -10,6 +10,12 @@
 
 #define MAX_UNACKED_ALIVE_MESSAGES 10
 
+extern int lsa_sending_interval_us;
+extern int lsa_generating_interval_us;
+extern int lc_sending_interval_us;
+extern int alive_sending_interval_us;
+extern int lsa_initial_age;
+
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
 extern int neighbour_count;

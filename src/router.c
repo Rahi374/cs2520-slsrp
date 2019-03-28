@@ -23,6 +23,12 @@
 #include "threads.h"
 #include "tools.h"
 
+int lsa_sending_interval_us;
+int lsa_generating_interval_us;
+int lc_sending_interval_us;
+int alive_sending_interval_us;
+int lsa_initial_age;
+
 pthread_mutex_t mutex_neighbours_list = PTHREAD_MUTEX_INITIALIZER;
 struct neighbour *neighbours_list;
 int neighbour_count = 0;
@@ -42,6 +48,27 @@ struct rt_entry *rt;
 
 struct in_addr cur_router_id;
 int cur_router_port;
+
+int load_config(const char *config_fn)
+{
+	FILE *f;
+	int ret;
+
+	f = fopen(config_fn, "r");
+	if (!f)
+		return errno;
+
+	ret = fscanf(f, "%d\n%d\n%d\n%d\n%d",
+			&lsa_sending_interval_us,
+			&lsa_generating_interval_us,
+			&lc_sending_interval_us,
+			&alive_sending_interval_us,
+			&lsa_initial_age);
+	ret = (ret == 5) ? 0 : -1;
+
+	fclose(f);
+	return ret;
+}
 
 // handler for a new packet
 // this is itself a thread, so no need to spawn new threads
@@ -191,12 +218,25 @@ int main(int argc, char *argv[])
 {
 	int listen_sock;
 	struct ifreq ifr;
+	int ret;
 
-	if (argc < 2) {
-		printf("you must specify router name\n");
+	if (argc < 3) {
+		printf("you must specify router name, then config file\n");
 		printf("you may also specify network device name after that\n");
 		return 1;
 	}
+
+	if (ret = load_config(argv[2])) {
+		fprintf(stderr, "failed to load config '%s': %s\n",
+			argv[2], ret == -1 ? "err" : strerror(ret));
+		return 1;
+	}
+	dprintf("loaded config: %d, %d, %d, %d, %d\n",
+			lsa_sending_interval_us,
+			lsa_generating_interval_us,
+			lc_sending_interval_us,
+			alive_sending_interval_us,
+			lsa_initial_age);
 
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0) {
@@ -237,13 +277,12 @@ int main(int argc, char *argv[])
 	rt = 0;
 	hm_rt_index = 0;
 
-	// TODO spawn timer threads
 	pthread_t listener_thread;
 	pthread_create(&listener_thread, NULL, listener_thread_func, &listen_sock); 
 
 	ifr.ifr_addr.sa_family = AF_INET;
-	if (argc >= 3)
-		strncpy(ifr.ifr_name, argv[2], IFNAMSIZ-1);
+	if (argc >= 4)
+		strncpy(ifr.ifr_name, argv[3], IFNAMSIZ-1);
 	else
 		strncpy(ifr.ifr_name, "eth0", IFNAMSIZ-1);
 	ioctl(listen_sock, SIOCGIFADDR, &ifr);
