@@ -1,9 +1,0 @@
-* milestone 1
-
-- DONE hashmap implementation
-- ui - basic control and debug
-- router - neighbour aquisition
-- DONE linked list - from kernel
-- DONE docker - scriptize
-
-- pass network device param to router? or ip addr?
