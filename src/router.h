@@ -9,6 +9,7 @@
 #include "list.h"
 
 #define MAX_UNACKED_ALIVE_MESSAGES 10
+#define MAX_FILE_PART 1200
 
 extern pthread_mutex_t mutex_neighbours_list;
 extern struct neighbour *neighbours_list;
@@ -23,8 +24,14 @@ extern pthread_mutex_t mutex_hm_lsa;
 extern struct table *hm_lsa;
 extern int lsa_count;
 
-extern struct table *hm_rt_index;
+extern struct table *hm_rt_index;//note, this gives index+1
 extern struct rt_entry *rt;
+
+extern pthread_mutex_t mutex_hm_file_ack;
+extern struct table *hm_file_ack;
+
+extern pthread_mutex_t mutex_hm_file_build;
+extern struct table *hm_file_build;
 
 extern struct in_addr cur_router_id;
 extern int cur_router_port;
@@ -113,13 +120,15 @@ struct rt_entry {
 	int thru_port;
 };
 
-struct file_control_struct {
-	long file_id;//create via timespec transform to ns
-};
-
-struct file_piece_struct {
-	int piece_num;
+struct file_part_control_struct {
+	unsigned int file_id;//create via timespec transform to ns
+	char file_name[128];
+	int part_num;
 	int num_bytes;
+	int file_length;
+	int is_final;
+	struct in_addr source_addr;
+	int source_port;
 };
 
 #endif // _ROUTER_DEFS_
