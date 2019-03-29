@@ -192,9 +192,9 @@ We were unable to test on baremetal thanks to The Great Firewall of Pitt.
 Hopefully the Elements Cluster doesn't have such a restriction. Docker should
 work.
 
-** Design
+* Design
 
-**Router Startup
+** Router Startup
 
 When a router spins up, it registers its name, ip, and the listening port given by the OS to the
 name server. The name server is how routers in the network initially find routers to
@@ -202,7 +202,7 @@ connect to. The router will then listen for connections on the listening port, s
 thread to handle any packet it receives, which then passes the responsibility of the packet to
 the thread that pertains to it.
 
-**Name Server
+** Name Server
 
 The name server has two important functionalities. Firstly, it allows the routers to know
 what port to find another router listening on, since this is randomly decided by the OS, but
@@ -210,7 +210,7 @@ it also gives an important abstraction for the network administrators. The route
 off of ip addresses, but the name server lets the startup and UI control work off of human
 readable names which the name server translates into IP addresses.
 
-**UI Control
+** UI Control
 
 To administer the router, the ui component communicates with a single router at a time 
 through network sockets. We went with a network based UI because it enabled administering
@@ -219,24 +219,25 @@ which we didn't implmenent per it not being within the scope of this project. On
 running, you can send the commands to the router to add a neighbour, obtain the neighbours list, 
 obtain the routing table, and send a file.
 
-**Obtaining Neighbours
+** Obtaining Neighbours
 
 A router that receives a UI command to obtain a neighbour will send a neighbour request to the
 desired neighbour and wait for an ack. If the ack times out it will try again. It tries a total of
 three times but this count may be changed. Upon neighbour acquisition, config variables are exchanged.
+Sending intervals will adjust to the max interval of the two neighbours.
 
-**Alive Messages
+** Alive Messages
 
 Once a router has obtained a neighbour, the alive thread will monitor if that neighbour is still alive.
 If 10 (can be changed) alive messages go without an ack, the link is considered down.
 
-**Link Cost Messages
+** Link Cost Messages
 
 While a neighbour is alive, the link cost thread will monitor the cost of the link to that neighbour.
 It does this by timing the rtt for a link cost message. The cost is computed as an exponentially
 decaying average.
 
-**Link State Advertisements
+** Link State Advertisements
 
 LSA's are periodically computed with the link costs of each of a neighbours routers. They are then sent
 to each of the routers neighbours, who also forward them. They use an increasing sequence number to
@@ -245,7 +246,7 @@ to send its or someone else's LSA, it will wait for an ack and retry after a tim
 forwarded the LSA to each of its neighbours successfully will it stop sending that LSA until it gets a
 newer one. LSAs are not sent back in the direction in which they came.
 
-**Link State Database and Routing Table
+** Link State Database and Routing Table
 
 With the knowledge from all of the LSAs, a router is able to build its view of the network
 topology. The link state database is stored in the form of an adjacency matrix for ease of use in
@@ -253,7 +254,7 @@ building the routing table. The routing table is rebuilt periodically by running
 LSD. Once the paths are computed, we can build a mapping of the destination router to the router to
 send the packet to.
 
-**File Transfer
+** File Transfer
 
 Now that the routers have a map of the network and know how to route packets within it, we are
 able to do file transfer. When the UI sends a file to the router, the router with fragment it into
