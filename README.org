@@ -183,3 +183,7 @@ this.
 
 If you get a compilation error along the lines of "list.h: No such file or
 directory", then run ~make clean -C src~ .
+
+Theoretically the network configuration file should work with defining
+double-sided edges, but it is recommended to define only one side for each
+edge.
