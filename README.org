@@ -229,10 +229,10 @@ the thread that pertains to it.
 ** Name Server
 
 The name server has two important functionalities. Firstly, it allows the routers to know
-what port to find another router listening on, since this is randomly decided by the OS, but
+what port to find another router listening on (reported by the ui), since this is randomly decided by the OS, but
 it also gives an important abstraction for the network administrators. The routers only work
 off of ip addresses, but the name server lets the startup and UI control work off of human
-readable names which the name server translates into IP addresses.
+readable names which the name server translates into IP addresses and ports.
 
 ** UI Control
 
@@ -243,9 +243,9 @@ which we didn't implmenent per it not being within the scope of this project. On
 running, you can send the commands to the router to add a neighbour, obtain the neighbours list, 
 obtain the routing table, and send a file.
 
-** Obtaining Neighbours
+** Adding Neighbours
 
-A router that receives a UI command to obtain a neighbour will send a neighbour request to the
+A router that receives a UI command to add a neighbour will send a neighbour request to the
 desired neighbour and wait for an ack. If the ack times out it will try again. It tries a total of
 three times but this count may be changed. Upon neighbour acquisition, config variables are exchanged.
 Sending intervals will adjust to the max interval of the two neighbours.
@@ -263,8 +263,8 @@ decaying average.
 
 ** Link State Advertisements
 
-LSA's are periodically computed with the link costs of each of a neighbours routers. They are then sent
-to each of the routers neighbours, who also forward them. They use an increasing sequence number to
+LSA's are periodically created with the cost of links to each neighbouring router. They are then sent
+to each of the router's neighbours, who also forward them. They use an increasing sequence number to
 denote newer ones, and an age counter to account for errors in sequence numbers. When the router tries
 to send its or someone else's LSA, it will wait for an ack and retry after a timeout. Only when it has
 forwarded the LSA to each of its neighbours successfully will it stop sending that LSA until it gets a
@@ -274,17 +274,17 @@ newer one. LSAs are not sent back in the direction in which they came.
 
 With the knowledge from all of the LSAs, a router is able to build its view of the network
 topology. The link state database is stored in the form of an adjacency matrix for ease of use in
-building the routing table. The routing table is rebuilt periodically by running dijkstras on the
-LSD. Once the paths are computed, we can build a mapping of the destination router to the router to
+building the routing table. The routing table is rebuilt periodically by running Dijkstra on the
+LSD. Once the paths are computed, we can build a mapping from the destination router to the neighbouring router to
 send the packet to.
 
 ** File Transfer
 
 Now that the routers have a map of the network and know how to route packets within it, we are
-able to do file transfer. When the UI sends a file to the router, the router with fragment it into
-a size of 1200 bytes of data plus the packet overhead. These fragments are stored at the receiving
-router and rebuilt and written to a file when the last one has arrived. When routers receive file 
-transfer packets, they check if they are the destination, if they are not, they use the routing 
-table to decide who to forward the packet to to reach that destination. The sending thread form 
-the sending router will either die when it receives acks of all of its fragments it needed to send,
-or if a timeout occurs indicating the something is wrong (this never actually happens).
+able to do file transfer. When the UI sends a file to the router, the router will split it into fragments of 1200 
+bytes of data plus the packet overhead. These fragments are stored at the receiving
+router and rebuilt and written to a file when the last fragment has arrived. When routers receive file 
+transfer packets, they check if they are the destination; if they are not, they use the routing 
+table to decide who to forward the packet to to reach that destination. The sending thread of 
+the sending router will die either when it receives acks of all of its fragments it needed to send,
+or if a timeout occurs indicating the something is wrong and the file cannot be sent (this never actually happens).
