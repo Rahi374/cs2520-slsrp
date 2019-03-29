@@ -15,7 +15,7 @@ auto network setup:
 - bash
 - coreutils
 
-Nameserver:
+Nameserver (optional; see Setup):
 - python3
 - flask (~pip3 install flask~)
 - flask_restful (~pip3 install flask_restful~)
