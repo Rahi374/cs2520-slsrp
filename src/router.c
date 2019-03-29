@@ -142,7 +142,6 @@ void *handle_packet(void *p)
 			break;
 	}
 
-	free(packet->header);
 	if (packet->header->packet_type == UI_CONTROL_SEND_FILE) {
 		if (orig_data)
 			free(orig_data);
@@ -150,6 +149,7 @@ void *handle_packet(void *p)
 		if (packet->data)
 			free(packet->data);
 	}
+	free(packet->header);
 	free(packet);
 }
 
