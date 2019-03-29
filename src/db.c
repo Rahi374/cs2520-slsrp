@@ -78,6 +78,7 @@ void update_rt()
 	}
 	struct rt_entry rt_arr[n];
 
+
 	//make space for routing table
 	new_rt = (struct rt_entry*)malloc(sizeof(struct rt_entry)*n);
 
@@ -158,6 +159,7 @@ void update_rt()
 	int start = (intptr_t)lookup(new_hm_rt_index, cur_router_id.s_addr);
 	if (start == 0) {
 		printf("\n\nError: lookup was 0 in db start index lookup\n\n");
+		fflush(stdout);
 		return;
 	}
 	start--;//okay so gross but we start at 1 and sub 1 cause hm grossness

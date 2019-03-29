@@ -225,6 +225,7 @@ void handle_alive_resp_packet(struct packet *packet)
 	struct alive_control_struct *con_struct = lookup(hm_alive, packet->header->source_addr.s_addr);
 	if (!con_struct){
 		printf("Error, did not find that neighbor's control struct for alive resp packet\n");
+		fflush(stdout);
 		return;
 	}
 	con_struct->num_unacked_messages = 0;
@@ -441,7 +442,8 @@ int send_file_part(struct packet *packet, unsigned int file_id_ns, int num_sent,
 	int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 	if (rt_index == 0){
 		printf("no entry found in rt for that destination\n");
-		return;
+		fflush(stdout);
+		return -1;
 	}
 	rt_index--;//cause grossness
 	neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
@@ -491,6 +493,7 @@ int send_file_part(struct packet *packet, unsigned int file_id_ns, int num_sent,
 		timeout_counter++;
 		if (timeout_counter >= 4000) {
 			printf("file transfer send timed out\n");
+			fflush(stdout);
 
 			pthread_mutex_lock(&mutex_hm_file_ack);
 			delete(hm_file_ack, file_id_ns);
@@ -521,6 +524,7 @@ void send_file_transfer_ack(struct packet *packet, struct file_part_control_stru
 	int rt_index = (intptr_t)lookup(hm_rt_index, f_part->source_addr.s_addr);
 	if (rt_index == 0){
 		printf("no entry found in rt for that destination\n");
+		fflush(stdout);
 		return;
 	}
 	rt_index--;//cause grossness
@@ -586,6 +590,7 @@ void handle_file_transfer_packet(struct packet *packet)
 			void *file_data = lookup(hm_file_build, ft_part.file_id);
 			if (file_data == 0){
 				printf("error, no file buffer found");
+				fflush(stdout);
 				pthread_mutex_unlock(&mutex_hm_file_build);
 				return;
 			}
@@ -612,6 +617,7 @@ void handle_file_transfer_packet(struct packet *packet)
 			void *file_data = lookup(hm_file_build, ft_part.file_id);
 			if (file_data == 0){
 				printf("error, no file buffer found");
+				fflush(stdout);
 				pthread_mutex_unlock(&mutex_hm_file_build);
 				return;
 			}
@@ -630,6 +636,7 @@ void handle_file_transfer_packet(struct packet *packet)
 		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 		if (rt_index == 0){
 			printf("no entry found in rt for that destination\n");
+			fflush(stdout);
 			return;
 		}
 		rt_index--;//cause grossness
@@ -682,6 +689,7 @@ void handle_file_transfer_ack_packet(struct packet *packet)
 		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 		if (rt_index == 0){
 			printf("no entry found in rt for that destination\n");
+			fflush(stdout);
 			return;
 		}
 		rt_index--;//cause grossness
@@ -743,6 +751,7 @@ void handle_ui_control_send_file_packet(struct packet *packet)
 		int res = send_file_part(packet, file_id_ns, num_sent_and_acked, MAX_FILE_PART, 0, file_len, file_name);
 		if (res == -1) {
 			printf("error: couldnt send middle file part\n");
+			fflush(stdout);
 			return;
 		}
 		num_sent_and_acked++;
@@ -751,6 +760,7 @@ void handle_ui_control_send_file_packet(struct packet *packet)
 	int res = send_file_part(packet, file_id_ns, num_sent_and_acked, last_pack_data_size, 1, file_len, file_name);
 	if (res == -1) {
 		printf("error: couldnt send final file part\n");		
+		fflush(stdout);
 		return;
 	}
 	dprintf("done sending file\n");	
