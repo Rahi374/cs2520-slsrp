@@ -150,6 +150,20 @@ Now that you have a network set up, here are a few things that you can do
 - view routing table
 - send file
 
+For sending a file, the UI should be self explanatory. Please note though,
+that the file that you are sending must be in the current working directory from
+where the UI is being run, and the receiving router will put the file in the
+working directory from which the router was run. Also note that you can only
+send files to routers (to connect to a running Docker container, get the
+container ID via ~docker ps~ or ~docker container ls~ , and then get a shell
+in it via ~docker exec -it <container id>~).
+
+This means that, for example, if you ran ui as ~./src/ui~ , then the file that
+you want to send must be in ~./~ . If you ran the ui as ~./ui~ (by first
+cd'in into src), then the file must be in ~./src~ . The location to which the
+file will be received by the router will be similar (the working directory,
+not the location of the executable binary).
+
 To kill the Docker containers, run ~./kill_docker.sh~ .
 
 ** Other features
@@ -164,3 +178,8 @@ this.
 
 - Disconnecting a router from the network causes Undefined Behavior
 - Packet error simulation
+
+** Notes
+
+If you get a compilation error along the lines of "list.h: No such file or
+directory", then run ~make clean -C src~ .
