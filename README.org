@@ -187,3 +187,7 @@ directory", then run ~make clean -C src~ .
 Theoretically the network configuration file should work with defining
 double-sided edges, but it is recommended to define only one side for each
 edge.
+
+We were unable to test on baremetal thanks to The Great Firewall of Pitt.
+Hopefully the Elements Cluster doesn't have such a restriction. Docker should
+work.
