@@ -46,7 +46,7 @@ if [[ -n "$2" ]]; then
 	else
 		setup_docker
 	fi
-	sleep 10
+	sleep 30
 fi
 
 echo "reading config from $config_fn"

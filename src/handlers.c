@@ -441,6 +441,7 @@ int send_file_part(struct packet *packet, unsigned int file_id_ns, int num_sent,
 	int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 	if (rt_index == 0){
 		printf("no entry found in rt for that destination\n");
+		return;
 	}
 	rt_index--;//cause grossness
 	neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
@@ -520,6 +521,7 @@ void send_file_transfer_ack(struct packet *packet, struct file_part_control_stru
 	int rt_index = (intptr_t)lookup(hm_rt_index, f_part->source_addr.s_addr);
 	if (rt_index == 0){
 		printf("no entry found in rt for that destination\n");
+		return;
 	}
 	rt_index--;//cause grossness
 	neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
@@ -628,6 +630,7 @@ void handle_file_transfer_packet(struct packet *packet)
 		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 		if (rt_index == 0){
 			printf("no entry found in rt for that destination\n");
+			return;
 		}
 		rt_index--;//cause grossness
 		neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
@@ -679,6 +682,7 @@ void handle_file_transfer_ack_packet(struct packet *packet)
 		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
 		if (rt_index == 0){
 			printf("no entry found in rt for that destination\n");
+			return;
 		}
 		rt_index--;//cause grossness
 		neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
