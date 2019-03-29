@@ -104,6 +104,7 @@ struct alive_control_struct {
 	int num_unacked_messages;
 	struct in_addr n_addr;
 	int n_port;
+	int interval_us;
 };
 
 struct link_cost_record {
@@ -118,6 +119,7 @@ struct cost_control_struct {
 	int n_port;
 	struct link_cost_record *lcr_list;
 	long link_avg_nsec;
+	int interval_us;
 };
 
 struct rt_entry {
@@ -135,6 +137,15 @@ struct file_part_control_struct {
 	int is_final;
 	struct in_addr source_addr;
 	int source_port;
+};
+
+struct config_vars_struct {
+	int accepted_req;
+	int lsa_sending_interval_us;
+	int lsa_generating_interval_us;
+	int lc_sending_interval_us;
+	int alive_sending_interval_us;
+	int lsa_initial_age;
 };
 
 #endif // _ROUTER_DEFS_

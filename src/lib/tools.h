@@ -1,6 +1,11 @@
 #ifndef _TOOLS_H
 #define _TOOLS_H
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+
 #ifdef DEBUG
 #define dprintf(...) do { fprintf(stdout, __VA_ARGS__); fflush(stdout); } while (0)
 #else

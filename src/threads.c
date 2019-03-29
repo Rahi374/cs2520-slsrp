@@ -102,6 +102,7 @@ void *lc_thread(void *id)
 	unsigned int n_router_id = *((unsigned int *)id);
 	struct link_cost_record *ptr;
 	struct link_cost_record *ptr_temp;
+	int sending_interval_us;
 
 	pthread_mutex_lock(&mutex_hm_cost);
 	struct cost_control_struct *con_struct = (struct cost_control_struct*)lookup(hm_cost, n_router_id);
@@ -111,6 +112,9 @@ void *lc_thread(void *id)
 		pthread_mutex_unlock(&mutex_hm_cost);
 		return (void*)0;
 	}
+
+	sending_interval_us = con_struct->interval_us;
+	dprintf("++++++++ sending interval link cost: %d +++++++++\n", sending_interval_us);
 	con_struct->pid_of_control_thread = getpid();
 	pthread_mutex_unlock(&mutex_hm_cost);
 
@@ -154,7 +158,7 @@ void *lc_thread(void *id)
 		send_link_cost_message(con_struct, single_lcr);
 		pthread_mutex_unlock(&mutex_hm_cost);
 		dprintf("Sent lc msg to neighbor\n");
-		usleep(lc_sending_interval_us);
+		usleep(sending_interval_us);
 	}
 }
 
@@ -162,6 +166,7 @@ void *alive_thread(void *id)
 {
 	dprintf("starting alive thread\n");
 	unsigned int n_router_id = *((unsigned int *)id);
+	int sending_interval_us;
 
 	pthread_mutex_lock(&mutex_hm_alive);
 	struct alive_control_struct *con_struct = (struct alive_control_struct*)lookup(hm_alive, n_router_id);
@@ -171,6 +176,8 @@ void *alive_thread(void *id)
 		pthread_mutex_unlock(&mutex_hm_alive);
 		return (void*)0;
 	}
+	sending_interval_us = con_struct->interval_us;
+	dprintf("++++++++ sending interval alive: %d +++++++++\n", sending_interval_us);
 	con_struct->pid_of_control_thread = getpid();
 	pthread_mutex_unlock(&mutex_hm_alive);
 
@@ -201,7 +208,7 @@ void *alive_thread(void *id)
 			con_struct->num_unacked_messages++;
 		}
 		pthread_mutex_unlock(&mutex_hm_alive);
-		usleep(alive_sending_interval_us);
+		usleep(sending_interval_us);
 	}
 }
 
@@ -251,13 +258,22 @@ void *add_neighbour_thread(void *id)
 		// send neighbour request
 		struct packet_header header;
 		header.packet_type = NEIGHBOR_REQ;
-		header.length = 0;
+		header.length = sizeof(struct config_vars_struct);
 		header.destination_addr.s_addr = n_router_full_id->addr.s_addr;
 		header.destination_port = n_router_full_id->port;
 		header.source_addr.s_addr = cur_router_id.s_addr;
 		header.source_port = cur_router_port;
 
-		write_header_and_data(sock, &header, 0, 0);
+		struct config_vars_struct config_s = {
+			0,
+			lsa_sending_interval_us,
+			lsa_generating_interval_us,
+			lc_sending_interval_us,
+			alive_sending_interval_us,
+			lsa_initial_age,
+		};
+
+		write_header_and_data(sock, &header, &config_s, sizeof(struct config_vars_struct));
 
 		dprintf("sent neighbour request\n");
 

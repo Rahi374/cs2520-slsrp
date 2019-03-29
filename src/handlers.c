@@ -36,6 +36,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	}
 	pthread_mutex_unlock(&mutex_neighbours_list);
 
+	
 	// initialize socket
 	dprintf("initializing socker for respondingn to add neighbour\n");
 	sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -56,6 +57,14 @@ void handle_neighbour_req_packet(struct packet *packet)
 		return;
 	}
 
+	struct config_vars_struct config_s = {
+		0,
+		lsa_sending_interval_us,
+		lsa_generating_interval_us,
+		lc_sending_interval_us,
+		alive_sending_interval_us,
+		lsa_initial_age,
+	};
 	// accept (or deny, but we want friends) neighbour request
 	// -> send response
 	memset(&resp, 0, sizeof(resp));
@@ -64,10 +73,10 @@ void handle_neighbour_req_packet(struct packet *packet)
 	resp.destination_addr.s_addr = packet->header->source_addr.s_addr;
 	resp.destination_port = packet->header->source_port;
 	resp.packet_type = NEIGHBOR_REQ_RESP;
-	resp.length = 1;
+	resp.length = sizeof(struct config_vars_struct);
 	resp.checksum_header = checksum_header(&resp);
 	// assume it succeeds
-	write(sock, &resp, sizeof(resp));
+	write_header_and_data(sock, &resp, &config_s, sizeof(struct config_vars_struct));
 
 	dprintf("adding to neighbour list\n");
 	// add to neighbour list
@@ -86,10 +95,12 @@ void handle_neighbour_req_packet(struct packet *packet)
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 
+	struct config_vars_struct *config_s_n = (struct config_vars_struct *)packet->data;
 	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	control_struct_alive->interval_us = max(alive_sending_interval_us, config_s_n->alive_sending_interval_us);
 	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
 	pthread_mutex_unlock(&mutex_hm_alive);
@@ -105,6 +116,7 @@ void handle_neighbour_req_packet(struct packet *packet)
 	struct cost_control_struct *control_struct_cost = malloc(sizeof(struct cost_control_struct));
 	control_struct_cost->n_addr = packet->header->source_addr;
 	control_struct_cost->n_port = packet->header->source_port;
+	control_struct_cost->interval_us = max(lc_sending_interval_us, config_s_n->lc_sending_interval_us);
 	struct link_cost_record *lcr;
 	lcr = (struct link_cost_record*)malloc(sizeof(struct link_cost_record));
 	lcr->time_out.tv_nsec = -1;//marker of the stupid null node needed
@@ -156,10 +168,12 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	neighbour_router_id = malloc(sizeof(packet->header->source_addr.s_addr));
 	*neighbour_router_id = packet->header->source_addr.s_addr;
 
+	struct config_vars_struct *config_s_n = (struct config_vars_struct *)packet->data;
 	struct alive_control_struct *control_struct_alive = malloc(sizeof(struct alive_control_struct));
 	control_struct_alive->num_unacked_messages = 0;
 	control_struct_alive->n_addr = packet->header->source_addr;
 	control_struct_alive->n_port = packet->header->source_port;
+	control_struct_alive->interval_us = max(alive_sending_interval_us, config_s_n->alive_sending_interval_us);
 	pthread_mutex_lock(&mutex_hm_alive);
 	insert(hm_alive, packet->header->source_addr.s_addr, control_struct_alive);	
 	pthread_mutex_unlock(&mutex_hm_alive);
@@ -174,6 +188,7 @@ void handle_neighbour_resp_packet(struct packet *packet)
 	struct cost_control_struct *control_struct_cost = malloc(sizeof(struct cost_control_struct));
 	control_struct_cost->n_addr = packet->header->source_addr;
 	control_struct_cost->n_port = packet->header->source_port;
+	control_struct_cost->interval_us = max( lc_sending_interval_us, config_s_n->lc_sending_interval_us);
 	struct link_cost_record *lcr;
 	lcr = malloc(sizeof(struct link_cost_record));
 	lcr->time_out.tv_nsec = -1;//marker of the stupid null node needed

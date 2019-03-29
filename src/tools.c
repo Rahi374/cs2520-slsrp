@@ -19,6 +19,8 @@ int has_data(struct packet_header *header)
 		case FILE_TRANSFER:
 		case FILE_TRANSFER_ACK:
 		case UI_CONTROL_SEND_FILE:
+		case NEIGHBOR_REQ_RESP:
+		case NEIGHBOR_REQ:
 			return 1;
 		default:
 			return 0;
