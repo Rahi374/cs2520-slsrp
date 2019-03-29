@@ -294,6 +294,79 @@ void test_external_writer()
 	}
 }
 
+void send_file()
+{
+	printf("Specify the file to send (from this directory): \n");
+	char file_name[128];
+	scanf("%s", file_name);
+	FILE *f;
+	f = fopen(file_name, "rb");
+	if (f == NULL) {
+		printf("no such file\n");
+		return;
+	}
+	
+	fseek(f, 0, SEEK_END);
+	int file_size = (int)ftell(f);
+	rewind(f);
+	printf("file size is %d bytes\n", file_size);
+	int file_name_len = strlen(file_name);
+	void *pack_data = malloc(file_name_len+1+sizeof(int)+file_size);
+	memcpy(pack_data, file_name, file_name_len+1);
+	memcpy(pack_data+file_name_len+1, &file_size, sizeof(int));
+	fread(pack_data+file_name_len+1+sizeof(int), 1, file_size, f);
+	//memcpy(pack_data+file_name_len+1+sizeof(int), f, file_size);
+
+	char buf[20];
+	char node_id_target[16];
+	int node_port_target_int;
+
+	printf("Specify the hostname to send a neighbour request to\n");
+	scanf("%s", buf);
+	int res = name_to_ip_port(buf, node_id_target, &node_port_target_int);
+	if (res) {
+		printf("router not found for that name\n");
+		return;
+	}
+
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = router_port;
+	sa.sin_addr.s_addr = inet_addr(router_ip);
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in writer");
+		return;
+	}
+	struct packet_header pack_header;
+	pack_header.packet_type = UI_CONTROL_SEND_FILE;
+	pack_header.length = file_name_len+1+sizeof(int)+file_size;
+	inet_aton(node_id_target, &pack_header.destination_addr);
+	pack_header.destination_port = node_port_target_int;
+	pack_header.source_addr = sa.sin_addr;
+	pack_header.source_port = sa.sin_port;
+	pack_header.var = file_name_len+1;
+
+	int n = write_header_and_data(sock, &pack_header, pack_data, pack_header.length);
+	if (n < 0) {
+		perror("error in write to socket\n");
+		close(sock);
+		return;
+	}
+
+	free(pack_data);
+	fclose(f);
+}
+
+
 void process_input(char *input)
 {
 	if (!strcmp(input, "exit"))
@@ -321,6 +394,8 @@ void process_input(char *input)
 			break;
 		case 6:
 			break;
+		case 7:
+			send_file();
 
 	}
 
@@ -337,6 +412,8 @@ void start_repl()
 		printf("	4 - Get Routing Table\n");
 		printf("	5 - test external writer NO LONGER USED\n");
 		printf("	6 - Buncha other stuff that isn't implemented\n");
+		printf("	7 - Send File\n");
+		printf("	Enter exit to quit\n");
 		char input[5];
 		scanf("%s", input);
 		process_input(input);

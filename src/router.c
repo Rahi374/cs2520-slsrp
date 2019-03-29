@@ -37,8 +37,14 @@ pthread_mutex_t mutex_hm_lsa = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_lsa;
 int lsa_count = 0;
 
-struct table *hm_rt_index;
+struct table *hm_rt_index;//note, this gives index+1
 struct rt_entry *rt;
+
+pthread_mutex_t mutex_hm_file_ack = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_file_ack;
+
+pthread_mutex_t mutex_hm_file_build = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_file_build;
 
 struct in_addr cur_router_id;
 int cur_router_port;
@@ -233,6 +239,8 @@ int main(int argc, char *argv[])
 	if (!hm_alive)
 		goto free_hm_alive;
 	*/
+	hm_file_ack = createTable(100);
+	hm_file_build = createTable(100);
 
 	rt = 0;
 	hm_rt_index = 0;

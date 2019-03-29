@@ -15,7 +15,7 @@ EOF
 start_docker_image() {
 	echo "starting router $1 in docker"
 	echo "docker run --network=cs2520slsrp_default router ./router $1 > $log_path/$1 &"
-	docker run --network=cs2520slsrp_default router ./router $1 &
+	docker run --network=cs2520slsrp_default router valgrind ./router $1 &
 }
 
 setup_docker() {
@@ -36,6 +36,7 @@ config_fn=$1
 
 if [[ -n "$2" ]]; then
 	setup_docker
+	sleep 10
 fi
 
 echo "reading config from $config_fn"
