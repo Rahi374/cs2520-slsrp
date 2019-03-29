@@ -315,7 +315,6 @@ void send_file()
 	memcpy(pack_data, file_name, file_name_len+1);
 	memcpy(pack_data+file_name_len+1, &file_size, sizeof(int));
 	fread(pack_data+file_name_len+1+sizeof(int), 1, file_size, f);
-	//memcpy(pack_data+file_name_len+1+sizeof(int), f, file_size);
 
 	char buf[20];
 	char node_id_target[16];

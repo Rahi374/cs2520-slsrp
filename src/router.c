@@ -55,6 +55,7 @@ int cur_router_port;
 void *handle_packet(void *p)
 {
 	struct packet *packet = (struct packet *)p;
+	void *orig_data;
 
 	switch (packet->header->packet_type) {
 		case NEIGHBOR_REQ:
@@ -91,6 +92,7 @@ void *handle_packet(void *p)
 			 handle_ui_control_add_neighbour(packet);
 			 break;
 		case UI_CONTROL_SEND_FILE:
+			 orig_data = packet->data;
 			 handle_ui_control_send_file_packet(packet);
 			 break;
 		case UI_CONTROL_GET_RT:
@@ -107,8 +109,13 @@ void *handle_packet(void *p)
 	}
 
 	free(packet->header);
-	if (packet->data)
-		free(packet->data);
+	if (packet->header->packet_type == UI_CONTROL_SEND_FILE) {
+		if (orig_data)
+			free(orig_data);
+	} else {
+		if (packet->data)
+			free(packet->data);
+	}
 	free(packet);
 }
 
