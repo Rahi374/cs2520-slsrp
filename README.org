@@ -1,0 +1,164 @@
+* CS2520 slsrp
+
+Network thingy.
+
+Authors: Nathan Ackerman, Paul Elder
+
+** Dependencies
+
+Router, UI:
+- gcc
+- pthreads
+- libcurl (Ubuntu, Debian: libcurl4-openssl-dev, Alpine Linux: curl-dev)
+
+auto network setup:
+- bash
+- coreutils
+
+Nameserver:
+- python3
+- flask (~pip3 install flask~)
+- flask_restful (~pip3 install flask_restful~)
+
+Docker-based router machines:
+- docker (Ubuntu, Debian: docker.io)
+
+** Setup
+
+As can be seen from the Dependencies section, there are four components: the
+router, the ui, the nameserver, and the auto network setup.
+
+*** Nameserver
+
+The routers themselves communicate with each other via IP address and port,
+but the nameserver is necessary for the network administrator to communicate
+to the routers (via the UI), and to initialize the network (to tell the
+routers which address and port its neighbours will listen on).
+
+To run the nameserver, simply run ~python3 name_server.py~. Make sure port
+5000 and your nameserver machine is accessible from your router machines and
+your machine that will run the UI.
+
+There is a demo nameserver active at http://amanokami.net:5000 . If you do
+decide to use your own nameserver, make sure to change the two ~#define~ s in
+~src/naming.c~ for ~NAME_SERVER_NAME~ and ~NAME_SERVER_ADD~ before compiling
+your router and UI.
+
+*** Router
+
+The router program can be run on either baremetal or in Docker containers
+(they can run in VMs, or whatever else as well, but we will not provide
+instructions on how to do so). If running on baremetal, keep in mind that the
+IP addresses that the routers use to communicate with each other must be
+unique and routable.
+
+To compile the router for baremetal: ~make -C src~ (to compile with debug
+flags: ~make debug -C src~)
+
+To compile Docker containers containing the router: ~make~ (or ~make debug~
+for compiling with debug flags)
+
+*** Router setup
+
+The routers must be started up before connecting them into a network. The
+syntax for running the router is (after compilation, the binary will be found
+in ~src/router~):
+
+~router <router name> <router config file> [<network device name>]~
+
+The network device name will tell the router from which network device to get
+the IP address from, for example eth0, or wlan0. This IP address will then be
+declared to the nameserver along with its name, and this IP address is how
+other routers (and the UI) will communicate with the current router.
+
+The config file is simply a list of 5 numbers, specifying, in order:
+- LSA sending interval (microseconds)
+- LSA generating interval (microseconds)
+- Link cost sending interval (microseconds)
+- Alive message sending interval (microseconds)
+- initial LSA age (integer)
+
+See ~configs/config~ for an example.
+
+For baremetal, simply run the router program on each machine.
+
+For Docker, see the Network initialization section.
+
+*** UI
+
+The UI is how we will communicate with the routers. To compile it, run
+~make ui -C src~. To connect to a router, run ~ui <router name>~. The UI
+binary will be in ~src/ui~.
+
+Note that the auto network initialization also requires the UI to be
+compiled.
+
+*** Network initialization
+
+Once the router program is running on each machine, we can now connect them
+into a network. We can do this manually through the UI by using the add
+neighbour command, or we can do it automatically via a script. The syntax for
+the network initialization script is:
+
+~setup_network.sh <network config file> <flag: boot docker containers> <flag: docker containers use same router config>~
+
+The last two flags are optional (they can either be omitted or set to 1), but
+the network config file is required.
+
+The network config file is a simplified ini format. The section headers
+denote a node, and the body of each section is simply a list of neighbours.
+Note that if two nodes are neighbours, in the network config it only needs to
+be specified under one of the node's sections. eg. if nodes A and B are
+neighbours, then A's section must have B, but B's section doesn't need A (or
+vice versa).
+
+An example network config with two nodes connected to each other:
+#+BEGIN_SRC ini
+[bob]
+alice
+[alice]
+#+END_SRC
+
+See ~networks/~ for more example network configurations.
+
+If using Docker routers, you can set the first flag to 1 and the script will
+spin up the Docker containers and their router programs for you, and then
+initialize the network. Note that if the second flag is not set, then in the
+~configs~ directory you must have a router config file for each router, in
+~configs/<router name>.config~. If you do set the second flag
+then you only need one router config file ~configs/config~ and all Docker
+routers will use the same router config.
+
+If Docker complains that the ~cs2520slsrp_default~ network cannot be found,
+then run ~make network~ and try the network setup again.
+
+You can, of course, run Docker containers manually:
+~docker run --network=cs2520slsrp_default router ./router <router name> <router config file>~
+
+For both baremetal and Docker containers, it is possible to spin up new
+machines/routers and add them to the network after the first initialization.
+It is, however, not recommended to disconnect routers from the network, as
+Undefined Behavior will occur.
+
+** What now?
+
+Now that you have a network set up, here are a few things that you can do
+(all via the UI) for any node in the network:
+
+- add neighbours
+- view neighbour list
+- view routing table
+- send file
+
+** Other features
+
+- Packet delay simulation
+
+In ~src/router.c~ there is a ~#define DELAY_PROB~ - this is the probablity
+(in percent) that any packet will be delayed. Feel free to play around with
+this.
+
+** Missing features
+
+- Disconnecting a router from the network causes Undefined Behavior
+- Packet error simulation
