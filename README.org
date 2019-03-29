@@ -66,6 +66,10 @@ in ~src/router~):
 
 ~./src/router <router name> <router config file> [<network device name>]~
 
+Example: ~./src/router jack configs/config eth0~ starts a router named "jack"
+with the router configuration specified in ~configs/config~ and communicating
+with the network via network device eth0 (eth0 is the default).
+
 The network device name will tell the router from which network device to get
 the IP address from, for example eth0, or wlan0. This IP address will then be
 declared to the nameserver along with its name, and this IP address is how
@@ -82,7 +86,10 @@ See ~configs/config~ for an example.
 
 For baremetal, simply run the router program on each machine.
 
-For Docker, see the Network initialization section.
+For Docker, see the Network initialization section. Note that the Docker
+containers will only have the router configurations that are in ~configs/~
+*at the time that the container is built*, so if you add or change any
+configs, you must build the container again (~make~).
 
 *** UI
 
@@ -101,6 +108,23 @@ neighbour command, or we can do it automatically via a script. The syntax for
 the network initialization script is:
 
 ~./setup_network.sh <network config file> <flag: boot docker containers> <flag: docker containers use same router config>~
+
+Examples:
+- ~./setup_network.sh networks/simple~ - starts a network based on the
+  network configuration ~networks/simple~, where the routers are all
+  currently running on baremetal (or Docker containers that are already running)
+- ~./setup_network.sh networks/simple 1~ - boots up Docker containers for every
+  node in the network specified in ~networks/simple~, and then connects the
+  routers into a network. Note that every router in each Docker container
+  will read its configuration from ~configs/<router name>.config~. Since
+  ~networks/simple~ have nodes bob, alice, and eve, configuration files
+  ~configs/bob.config~, ~configs/alice.config~, and ~configs/eve.config~ must
+  exist at the time of building the Docker container (~make~).
+- ~./setup_network.sh networks/simple 1 1~ boots up Docker containers for
+  every node in the network specified in ~networks/simple~, and then
+  connects the routers into a network. Note that all the routers in each
+  Docker container will read its configuration from ~configs/config~, which
+  must exist at the time of building the Docker container (~make~)
 
 The last two flags are optional (they can either be omitted or set to 1), but
 the network config file is required.
