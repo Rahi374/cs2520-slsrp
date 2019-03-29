@@ -418,14 +418,338 @@ void handle_lsa_ack_packet(struct packet *packet)
 	pthread_mutex_unlock(&con_struct->lock);
 }
 
+int send_file_part(struct packet *packet, unsigned int file_id_ns, int num_sent, int data_size_to_send, int final_pack, int file_len, char *file_name)
+{
+	dprintf("sending file part\n");
+	struct file_part_control_struct file_part;
+	file_part.file_id = file_id_ns;
+	file_part.num_bytes = data_size_to_send;
+	file_part.part_num = num_sent;
+	file_part.is_final = final_pack;
+	file_part.file_length = file_len;
+	file_part.source_addr.s_addr = cur_router_id.s_addr;
+	file_part.source_port = cur_router_port;
+	strcpy(file_part.file_name, file_name);
+	void *pack_data = malloc(sizeof(struct file_part_control_struct)+data_size_to_send);
+	//memcpy pack data
+	memcpy(pack_data, &file_part, sizeof(struct file_part_control_struct));	
+	memcpy(pack_data + sizeof(struct file_part_control_struct), packet->data+(num_sent*MAX_FILE_PART), data_size_to_send);
+	dprintf("===== sending data %c\n", *((char *)packet->data));
+	//look up neighbour to send to
+	struct in_addr neighbour_to_send_to_addr;
+	int neighbour_to_send_to_port;
+	int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
+	if (rt_index == 0){
+		printf("no entry found in rt for that destination\n");
+	}
+	rt_index--;//cause grossness
+	neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
+	neighbour_to_send_to_port = rt[rt_index].thru_port;
+	//build pack_header
+		
+	dprintf("debug 1\n");
+	//insert into hm
+	pthread_mutex_lock(&mutex_hm_file_ack);
+	int is_acked = 0;
+	insert(hm_file_ack, file_id_ns, (void*)&is_acked);
+	pthread_mutex_unlock(&mutex_hm_file_ack);
+	//send	
+	
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return -1;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = neighbour_to_send_to_port;
+	sa.sin_addr.s_addr = neighbour_to_send_to_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in send file part");
+		return -1;
+	}
+
+	struct packet_header f_packet;
+	memset(&f_packet, 0, sizeof(struct packet_header));
+	f_packet.source_addr.s_addr = cur_router_id.s_addr;
+	f_packet.source_port = cur_router_port;
+	f_packet.destination_addr.s_addr = packet->header->destination_addr.s_addr;
+	f_packet.destination_port = packet->header->destination_port;
+	f_packet.packet_type = FILE_TRANSFER;
+	f_packet.length = sizeof(struct file_part_control_struct)+data_size_to_send;
+	f_packet.checksum_header = checksum_header(&f_packet);
+	
+	dprintf("debug 2\n");
+	write_header_and_data(sock, &f_packet, pack_data, f_packet.length);
+	int timeout_counter = 0;	
+	while (!is_acked) {
+		timeout_counter++;
+		if (timeout_counter >= 4000) {
+			printf("file transfer send timed out\n");
+
+			pthread_mutex_lock(&mutex_hm_file_ack);
+			delete(hm_file_ack, file_id_ns);
+			pthread_mutex_unlock(&mutex_hm_file_ack);
+			
+			return -1;
+		}
+		usleep(10000);
+	}
+	
+	dprintf("debug 3\n");
+	pthread_mutex_lock(&mutex_hm_file_ack);
+	delete(hm_file_ack, file_id_ns);
+	pthread_mutex_unlock(&mutex_hm_file_ack);
+	
+	close(sock);
+	free(pack_data);
+	return 1;
+
+}
+
+void send_file_transfer_ack(struct packet *packet, struct file_part_control_struct *f_part)
+{
+
+	struct in_addr neighbour_to_send_to_addr;
+	int neighbour_to_send_to_port;
+
+	int rt_index = (intptr_t)lookup(hm_rt_index, f_part->source_addr.s_addr);
+	if (rt_index == 0){
+		printf("no entry found in rt for that destination\n");
+	}
+	rt_index--;//cause grossness
+	neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
+	neighbour_to_send_to_port = rt[rt_index].thru_port;
+
+	int sock = socket(AF_INET,SOCK_STREAM, 0);
+	if (sock < 0) {
+		perror("Error making socket\n");
+		return;
+	}
+
+	struct sockaddr_in sa;
+	memset(&sa, 0 ,sizeof(sa));
+	sa.sin_port = neighbour_to_send_to_port;
+	sa.sin_addr.s_addr = neighbour_to_send_to_addr.s_addr;
+	sa.sin_family = AF_INET;
+
+	int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+	if (con < 0) {
+		perror("error on connect in handle lc packet");
+		return;
+	}
+
+	struct packet_header ft_ack_packet;
+	memset(&ft_ack_packet, 0, sizeof(struct packet_header));
+	ft_ack_packet.source_addr.s_addr = cur_router_id.s_addr;
+	ft_ack_packet.source_port = cur_router_port;
+	ft_ack_packet.destination_addr.s_addr = f_part->source_addr.s_addr;
+	ft_ack_packet.destination_port = f_part->source_port;
+	ft_ack_packet.packet_type = FILE_TRANSFER_ACK;
+	ft_ack_packet.length = sizeof(unsigned int);
+	ft_ack_packet.checksum_header = checksum_header(&ft_ack_packet);
+	write_header_and_data(sock, &ft_ack_packet, &f_part->file_id, sizeof(unsigned int));
+	close(sock);
+}
+
 void handle_file_transfer_packet(struct packet *packet)
 {
 	dprintf("handling packet for file transfer\n");
+	if (packet->header->destination_addr.s_addr == cur_router_id.s_addr) {
+		dprintf("file transfer packet... for me... storing\n");
+		//store file part and send ack
+		struct file_part_control_struct ft_part;
+		memcpy(&ft_part, packet->data, sizeof(struct file_part_control_struct));
+		if (ft_part.is_final == 1 && ft_part.part_num == 0) {
+			dprintf("handle ft pack option 1\n");
+			dprintf("filename: %s\n", ft_part.file_name);
+			dprintf("uhh here\n");
+			FILE *fp = fopen(ft_part.file_name, "wb");
+			if (fp == NULL) {
+				perror("err");
+				dprintf("error on fopen\n");
+				exit(0);
+			}
+			void *file_data = packet->data + sizeof(struct file_part_control_struct);
+			dprintf("file_data: %p, packet->data: %p\n", file_data, packet->data);
+			fwrite(file_data, 1, ft_part.num_bytes, fp);
+			fclose(fp);
+		} else if (ft_part.is_final) {
+			dprintf("handle ft pack option 2\n");
+			pthread_mutex_lock(&mutex_hm_file_build);
+			void *file_data = lookup(hm_file_build, ft_part.file_id);
+			if (file_data == 0){
+				printf("error, no file buffer found");
+				pthread_mutex_unlock(&mutex_hm_file_build);
+				return;
+			}
+
+			memcpy(file_data+(MAX_FILE_PART*ft_part.part_num), packet->data+sizeof(struct file_part_control_struct), ft_part.num_bytes);
+			FILE *fp = fopen(ft_part.file_name, "wb");
+			fwrite(file_data, 1, ft_part.file_length, fp);
+		
+			delete(hm_file_build, ft_part.file_id);
+			free(file_data);
+			pthread_mutex_unlock(&mutex_hm_file_build);
+			fclose(fp);
+		} else if (ft_part.part_num == 0) {
+			dprintf("handle ft pack option 3\n");
+			void *file_data = malloc(ft_part.file_length);
+			memcpy(file_data, packet->data+sizeof(struct file_part_control_struct), ft_part.num_bytes);
+			pthread_mutex_lock(&mutex_hm_file_build);
+			insert(hm_file_build, ft_part.file_id, file_data);
+			pthread_mutex_unlock(&mutex_hm_file_build);
+		} else {
+			dprintf("handle ft pack option 4\n");
+			//middle packet, store in buffer
+			pthread_mutex_lock(&mutex_hm_file_build);
+			void *file_data = lookup(hm_file_build, ft_part.file_id);
+			if (file_data == 0){
+				printf("error, no file buffer found");
+				pthread_mutex_unlock(&mutex_hm_file_build);
+				return;
+			}
+			memcpy(file_data+(MAX_FILE_PART*ft_part.part_num), packet->data+sizeof(struct file_part_control_struct), MAX_FILE_PART);
+			pthread_mutex_unlock(&mutex_hm_file_build);
+		}
+		dprintf("about to send file transfer ack\n");
+		send_file_transfer_ack(packet, &ft_part);
+		dprintf("after send file transfer ack\n");
+	} else {
+		dprintf("file transfer packet... not for me... transfering\n");
+		//forward packet
+		struct in_addr neighbour_to_send_to_addr;
+		int neighbour_to_send_to_port;
+
+		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
+		if (rt_index == 0){
+			printf("no entry found in rt for that destination\n");
+		}
+		rt_index--;//cause grossness
+		neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
+		neighbour_to_send_to_port = rt[rt_index].thru_port;
+
+
+
+		int sock = socket(AF_INET,SOCK_STREAM, 0);
+		if (sock < 0) {
+			perror("Error making socket\n");
+			return;
+		}
+
+		struct sockaddr_in sa;
+		memset(&sa, 0 ,sizeof(sa));
+		sa.sin_port = neighbour_to_send_to_port;
+		sa.sin_addr.s_addr = neighbour_to_send_to_addr.s_addr;
+		sa.sin_family = AF_INET;
+
+		int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+		if (con < 0) {
+			perror("error on connect in send file part");
+			return;
+		}
+
+		write_header_and_data(sock, packet->header, packet->data, packet->header->length);
+
+		close(sock);
+	}
 }
 
 void handle_file_transfer_ack_packet(struct packet *packet)
 {
-	dprintf("handling packet for file transfer\n");
+	dprintf("handling packet for file transfer ack\n");
+	if (packet->header->destination_addr.s_addr == cur_router_id.s_addr) {
+		dprintf("file transfer ack packet... for me... storing\n");
+		unsigned int f_id;
+		memcpy(&f_id, packet->data, sizeof(unsigned int));
+		pthread_mutex_lock(&mutex_hm_file_ack);
+		int *ack_var = (int*)lookup(hm_file_ack, f_id);	
+		*ack_var = 1;
+		pthread_mutex_unlock(&mutex_hm_file_ack);
+	} else {
+		dprintf("file transfer ack packet... not for me... transfering\n");
+		//forward packet
+		struct in_addr neighbour_to_send_to_addr;
+		int neighbour_to_send_to_port;
+
+		int rt_index = (intptr_t)lookup(hm_rt_index, packet->header->destination_addr.s_addr);
+		if (rt_index == 0){
+			printf("no entry found in rt for that destination\n");
+		}
+		rt_index--;//cause grossness
+		neighbour_to_send_to_addr.s_addr = rt[rt_index].thru_addr.s_addr;
+		neighbour_to_send_to_port = rt[rt_index].thru_port;
+
+		int sock = socket(AF_INET,SOCK_STREAM, 0);
+		if (sock < 0) {
+			perror("Error making socket\n");
+			return;
+		}
+
+		struct sockaddr_in sa;
+		memset(&sa, 0 ,sizeof(sa));
+		sa.sin_port = neighbour_to_send_to_port;
+		sa.sin_addr.s_addr = neighbour_to_send_to_addr.s_addr;
+		sa.sin_family = AF_INET;
+
+		int con = connect(sock, (struct sockaddr *)&sa, sizeof(sa));
+		if (con < 0) {
+			perror("error on connect in send file part");
+			return;
+		}
+
+		write_header_and_data(sock, packet->header, packet->data, packet->header->length);
+		close(sock);
+	}
+}
+
+void handle_ui_control_send_file_packet(struct packet *packet)
+{
+	dprintf("received ui command to send file\n");
+	void *orig_data_malloc = (void*)packet->data;
+	int file_name_len = packet->header->var;
+	char file_name[128];
+	memcpy(file_name, packet->data, file_name_len);
+	packet->data = packet->data + file_name_len;
+	int file_len;
+	memcpy(&file_len, packet->data, sizeof(int));
+	packet->data = packet->data + sizeof(int);
+	//packet->data now points to all of the data for the file
+	dprintf("file read in, first char is %c\n", *((char *)packet->data));
+
+	int num_sent_and_acked = 0;
+	int num_packs_needed = (file_len + MAX_FILE_PART - 1) / MAX_FILE_PART;
+	int last_pack_data_size = file_len % MAX_FILE_PART;
+	dprintf("file parts: %d last part size %d\n", num_packs_needed, last_pack_data_size);
+	dprintf("test debug print 000\n");
+	if (last_pack_data_size == 0) {
+		last_pack_data_size = MAX_FILE_PART;
+	}
+	dprintf("test debug print\n");
+	dprintf("filename: %s\n", file_name);
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	unsigned int file_id_ns = (unsigned int)(ts.tv_nsec + 1000000000*ts.tv_sec);
+	dprintf("starting sending of file\n");
+	while (num_sent_and_acked < num_packs_needed-1) {
+		int res = send_file_part(packet, file_id_ns, num_sent_and_acked, MAX_FILE_PART, 0, file_len, file_name);
+		if (res == -1) {
+			printf("error: couldnt send middle file part\n");
+			return;
+		}
+		num_sent_and_acked++;
+	}
+	dprintf("sending final part\n");
+	int res = send_file_part(packet, file_id_ns, num_sent_and_acked, last_pack_data_size, 1, file_len, file_name);
+	if (res == -1) {
+		printf("error: couldnt send final file part\n");		
+		return;
+	}
+	dprintf("done sending file\n");	
 }
 
 void handle_ui_control_add_neighbour(struct packet *packet)
@@ -442,11 +766,6 @@ void handle_ui_control_add_neighbour(struct packet *packet)
 	dprintf("spawning thread to deal with add neighbour\n");
 	pthread_t add_neighbour_t;
 	pthread_create(&add_neighbour_t, NULL, add_neighbour_thread, (void *)input);
-}
-
-void handle_ui_control_send_file_packet(struct packet *packet)
-{
-	dprintf("received ui command to send file\n");
 }
 
 void handle_ui_control_get_rt_packet(struct packet *packet)
@@ -481,7 +800,7 @@ void handle_ui_control_get_neighbours_packet(struct packet *packet)
 	pthread_mutex_lock(&mutex_neighbours_list);
 
 	struct in_addr *n_arr;
-	if (neighbour_count > 0){
+	if (neighbour_count > 0) {
 		n_arr = malloc(neighbour_count * sizeof(struct in_addr));
 		int entry_num = 0;
 		list_for_each_entry(ptr, &neighbours_list->list, list) {

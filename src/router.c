@@ -46,8 +46,14 @@ pthread_mutex_t mutex_hm_lsa = PTHREAD_MUTEX_INITIALIZER;
 struct table *hm_lsa;
 int lsa_count = 0;
 
-struct table *hm_rt_index;
+struct table *hm_rt_index;//note, this gives index+1
 struct rt_entry *rt;
+
+pthread_mutex_t mutex_hm_file_ack = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_file_ack;
+
+pthread_mutex_t mutex_hm_file_build = PTHREAD_MUTEX_INITIALIZER;
+struct table *hm_file_build;
 
 struct in_addr cur_router_id;
 int cur_router_port;
@@ -79,6 +85,7 @@ int load_config(const char *config_fn)
 void *handle_packet(void *p)
 {
 	struct packet *packet = (struct packet *)p;
+	void *orig_data;
 	unsigned int seed = time(NULL);
 
 	if (rand_r(&seed) % 100 < DELAY_PROB)
@@ -119,6 +126,7 @@ void *handle_packet(void *p)
 			 handle_ui_control_add_neighbour(packet);
 			 break;
 		case UI_CONTROL_SEND_FILE:
+			 orig_data = packet->data;
 			 handle_ui_control_send_file_packet(packet);
 			 break;
 		case UI_CONTROL_GET_RT:
@@ -135,8 +143,13 @@ void *handle_packet(void *p)
 	}
 
 	free(packet->header);
-	if (packet->data)
-		free(packet->data);
+	if (packet->header->packet_type == UI_CONTROL_SEND_FILE) {
+		if (orig_data)
+			free(orig_data);
+	} else {
+		if (packet->data)
+			free(packet->data);
+	}
 	free(packet);
 }
 
@@ -280,6 +293,8 @@ int main(int argc, char *argv[])
 	if (!hm_alive)
 		goto free_hm_alive;
 	*/
+	hm_file_ack = createTable(100);
+	hm_file_build = createTable(100);
 
 	rt = 0;
 	hm_rt_index = 0;
