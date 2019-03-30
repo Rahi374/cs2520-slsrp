@@ -23,6 +23,9 @@ Nameserver (optional; see Setup):
 Docker-based router machines:
 - docker (Ubuntu, Debian: docker.io)
 
+Running Docker may require the user to be in the Docker group. To do this:
+~usermod -a -G docker <username>~
+
 ** Setup
 
 As can be seen from the Dependencies section, there are four components: the
